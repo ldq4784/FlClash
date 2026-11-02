@@ -27,6 +27,7 @@ class Request {
     _clashDio.httpClientAdapter = IOHttpClientAdapter(
       createHttpClient: () {
         final client = HttpClient();
+        client.badCertificateCallback = (certificate, host, port) => true;
         client.findProxy = (Uri uri) {
           client.userAgent = globalState.ua;
           final read = _read;

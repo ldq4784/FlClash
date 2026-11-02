@@ -12,6 +12,7 @@ import (
 var skipCertVerify atomic.Bool
 
 func relaxCertVerify(tlsConfig *tls.Config) {
+	tlsConfig.Renegotiation = tls.RenegotiateFreelyAsClient
 	if !skipCertVerify.Load() {
 		return
 	}
