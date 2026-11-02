@@ -163,8 +163,8 @@ void main() {
     await openAddSheet(tester);
 
     expect(find.text('Direct Nameserver'), findsOneWidget);
-    expect(find.text(currentAppLocalizations.respectRules), findsNothing);
-    expect(find.text('Nameserver Policy'), findsNothing);
+    expect(find.text(currentAppLocalizations.respectRules), findsOneWidget);
+    expect(find.text('Nameserver Policy'), findsOneWidget);
     expect(find.text(currentAppLocalizations.fallbackFilter), findsNothing);
   });
 
