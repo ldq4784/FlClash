@@ -156,6 +156,13 @@ class App {
     return methodChannel.invokeMethod<bool>('openAppSettings');
   }
 
+  Future<bool> installApk(String filePath) async {
+    return await methodChannel.invokeMethod<bool>('installApk', {
+          'filePath': filePath,
+        }) ??
+        false;
+  }
+
   Future<AppExitInfo?> getLastExitInfo() async {
     try {
       final raw = await methodChannel

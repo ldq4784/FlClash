@@ -142,6 +142,194 @@ class CommonAction extends _$CommonAction {
     ];
   }
 
+  String? _findApkUrl(Map<String, dynamic> data) {
+    final rawAssets = data['assets'];
+    if (rawAssets is List && rawAssets.isNotEmpty) {
+      final apkAssets = rawAssets
+          .whereType<Map>()
+          .where((a) => (a['name']?.toString() ?? '').endsWith('.apk'))
+          .toList();
+      if (apkAssets.isNotEmpty) {
+        final arm64 = apkAssets.firstWhereOrNull(
+          (a) => (a['name']?.toString() ?? '').contains('arm64'),
+        );
+        final selected = arm64 ?? apkAssets.first;
+        final url = selected['browser_download_url']?.toString();
+        if (url != null && url.isNotEmpty) {
+          return url;
+        }
+      }
+    }
+    final tagName = data['tag_name'] as String?;
+    if (tagName != null && tagName.isNotEmpty) {
+      final ver = tagName.startsWith('v') ? tagName.substring(1) : tagName;
+      return 'https://github.com/$repository/releases/download/$tagName/FlClash-$ver-android-arm64-v8a.apk';
+    }
+    return null;
+  }
+
+  Future<void> _downloadAndInstallApk(String url) async {
+    final tempPath = await appPath.tempDirPath;
+    final apkPath = join(tempPath, 'update.apk');
+    final file = File(apkPath);
+    if (await file.exists()) {
+      try {
+        await file.delete();
+      } catch (_) {}
+    }
+
+    final cancelToken = CancelToken();
+    final progressNotifier = ValueNotifier<double>(0.0);
+    final statusNotifier = ValueNotifier<String>('0%');
+    final dialogReady = Completer<BuildContext>();
+
+    unawaited(
+      dialogs.showCommonDialog<void>(
+        dismissible: false,
+        child: PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) {
+              cancelToken.cancel();
+              if (dialogReady.isCompleted) {
+                dialogReady.future.then((ctx) {
+                  if (ctx.mounted) Navigator.of(ctx).pop();
+                });
+              }
+            }
+          },
+          child: Builder(
+            builder: (ctx) {
+              if (!dialogReady.isCompleted) {
+                dialogReady.complete(ctx);
+              }
+              return CommonDialog(
+                title: currentAppLocalizations.download,
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      cancelToken.cancel();
+                      Navigator.of(ctx).pop();
+                    },
+                    child: Text(currentAppLocalizations.cancel),
+                  ),
+                ],
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ValueListenableBuilder<double>(
+                      valueListenable: progressNotifier,
+                      builder: (context, progress, _) {
+                        return LinearProgressIndicator(
+                          value: progress > 0 ? progress : null,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    ValueListenableBuilder<String>(
+                      valueListenable: statusNotifier,
+                      builder: (context, text, _) {
+                        return Text(
+                          text,
+                          style: AppTextStyle.subheadline.of(context),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    var success = false;
+    Object? downloadError;
+    try {
+      await request.dio.download(
+        url,
+        apkPath,
+        cancelToken: cancelToken,
+        onReceiveProgress: (count, total) {
+          if (total > 0) {
+            final progress = (count / total).clamp(0.0, 1.0);
+            progressNotifier.value = progress;
+            final currentMb = (count / (1024 * 1024)).toStringAsFixed(1);
+            final totalMb = (total / (1024 * 1024)).toStringAsFixed(1);
+            final percent = (progress * 100).toInt();
+            statusNotifier.value = '$percent% ($currentMb MB / $totalMb MB)';
+          }
+        },
+      );
+      success = true;
+    } catch (e) {
+      downloadError = e;
+    }
+
+    try {
+      final ctx = await dialogReady.future.timeout(const Duration(seconds: 2));
+      if (ctx.mounted) {
+        Navigator.of(ctx).pop();
+      }
+    } catch (_) {}
+
+    if (cancelToken.isCancelled) {
+      if (await file.exists()) {
+        try {
+          await file.delete();
+        } catch (_) {}
+      }
+      return;
+    }
+
+    if (!success) {
+      if (await file.exists()) {
+        try {
+          await file.delete();
+        } catch (_) {}
+      }
+      final retry = await dialogs.showMessage(
+        title: currentAppLocalizations.tip,
+        message: TextSpan(
+          text:
+              '${currentAppLocalizations.networkRequestFailed(compactError(downloadError))}\n\n'
+              '${currentAppLocalizations.goDownload}?',
+        ),
+        confirmText: system.isAndroid
+            ? currentAppLocalizations.update
+            : currentAppLocalizations.goDownload,
+      );
+      if (retry == true) {
+        unawaited(
+          launchUrl(
+            Uri.parse('https://github.com/$repository/releases/latest'),
+          ),
+        );
+      }
+      return;
+    }
+
+    final installed = await app?.installApk(apkPath) ?? false;
+    if (!installed) {
+      final retry = await dialogs.showMessage(
+        title: currentAppLocalizations.tip,
+        message: TextSpan(text: currentAppLocalizations.goDownload),
+        confirmText: system.isAndroid
+            ? currentAppLocalizations.update
+            : currentAppLocalizations.goDownload,
+      );
+      if (retry == true) {
+        unawaited(
+          launchUrl(
+            Uri.parse('https://github.com/$repository/releases/latest'),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> checkUpdateResultHandle({
     Map<String, dynamic>? data,
     bool isUser = false,
@@ -155,10 +343,19 @@ class CommonAction extends _$CommonAction {
           data['tag_name'] as String,
           data['body'] as String?,
         ),
-        confirmText: currentAppLocalizations.goDownload,
+        confirmText: system.isAndroid
+            ? currentAppLocalizations.update
+            : currentAppLocalizations.goDownload,
         cancelText: isUser ? null : currentAppLocalizations.noLongerRemind,
       );
       if (res == true) {
+        if (system.isAndroid) {
+          final apkUrl = _findApkUrl(data);
+          if (apkUrl != null) {
+            await _downloadAndInstallApk(apkUrl);
+            return;
+          }
+        }
         unawaited(
           launchUrl(
             Uri.parse('https://github.com/$repository/releases/latest'),

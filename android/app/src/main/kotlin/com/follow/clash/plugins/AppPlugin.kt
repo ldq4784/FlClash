@@ -14,6 +14,8 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import androidx.core.app.ActivityCompat
+import androidx.core.content.FileProvider
+import java.io.File
 import androidx.core.content.ContextCompat
 import androidx.core.content.ContextCompat.getSystemService
 import androidx.core.content.pm.ShortcutInfoCompat
@@ -203,6 +205,15 @@ class AppPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, ActivityAware 
                 result.success(openAppSettings())
             }
 
+            "installApk" -> {
+                val filePath = call.argument<String>("filePath")
+                if (filePath.isNullOrEmpty()) {
+                    result.success(false)
+                } else {
+                    result.success(installApk(filePath))
+                }
+            }
+
             "getLastExitInfo" -> reply(result) {
                 GlobalState.lastExitInfo()
             }
@@ -210,6 +221,26 @@ class AppPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, ActivityAware 
             else -> {
                 result.notImplemented()
             }
+        }
+    }
+
+    private fun installApk(filePath: String): Boolean {
+        return try {
+            val context = activity ?: GlobalState.application
+            val file = File(filePath)
+            if (!file.exists()) return false
+            val authority = "${context.packageName}.fileProvider"
+            val uri = FileProvider.getUriForFile(context, authority, file)
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+            true
+        } catch (e: Exception) {
+            GlobalState.log("installApk failed: $e")
+            false
         }
     }
 

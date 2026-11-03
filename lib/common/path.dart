@@ -84,6 +84,11 @@ class AppPath {
     return join(mHomeDirPath, 'database.sqlite');
   }
 
+  Future<String> get tempDirPath async {
+    final mTempDir = await _tempDir.value;
+    return mTempDir.path;
+  }
+
   Future<String> get tempFilePath async {
     final mTempDir = await _tempDir.value;
     return join(mTempDir.path, 'temp$uniqueId');
