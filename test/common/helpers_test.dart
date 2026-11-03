@@ -128,6 +128,8 @@ void main() {
     test('handles build number', () {
       expect(compareVersions('1.0.0+1', '1.0.0+2'), lessThan(0));
       expect(compareVersions('1.0.0+2', '1.0.0+1'), greaterThan(0));
+      expect(compareVersions('1.0.0-build.1', '1.0.0-build.2'), lessThan(0));
+      expect(compareVersions('1.0.0-build.2', '1.0.0'), greaterThan(0));
     });
 
     test('handles missing minor/patch', () {
