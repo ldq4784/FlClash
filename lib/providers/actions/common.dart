@@ -290,11 +290,14 @@ class CommonAction extends _$CommonAction {
           await file.delete();
         } catch (_) {}
       }
+      final errorDetail = downloadError != null
+          ? compactError(downloadError)
+          : currentAppLocalizations.unknown;
       final retry = await dialogs.showMessage(
         title: currentAppLocalizations.tip,
         message: TextSpan(
           text:
-              '${currentAppLocalizations.networkRequestFailed(compactError(downloadError))}\n\n'
+              '${currentAppLocalizations.networkRequestFailed(errorDetail)}\n\n'
               '${currentAppLocalizations.goDownload}?',
         ),
         confirmText: system.isAndroid
