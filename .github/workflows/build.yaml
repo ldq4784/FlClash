@@ -94,6 +94,24 @@ jobs:
             ln -sf "$llvm/musl/lib/libc_musl.so" "$llvm/lib/libc_musl.so" || true
           fi
 
+      - name: Prepare Release Info
+        id: release_info
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            tag="${{ github.ref_name }}"
+            name="${{ github.ref_name }}"
+            ver="${tag#v}"
+          else
+            tag="v0.9.2-build.${{ github.run_number }}"
+            name="Release v0.9.2-build.${{ github.run_number }}"
+            ver="0.9.2-build.${{ github.run_number }}"
+          fi
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+          echo "name=$name" >> $GITHUB_OUTPUT
+          sed -i "s/^version: .*/version: ${ver}+${{ github.run_number }}/" pubspec.yaml
+          echo "Updated pubspec.yaml to: $(grep '^version:' pubspec.yaml)"
+
       - name: Get Flutter Dependency
         run: |
           flutter --version
@@ -124,18 +142,6 @@ jobs:
         with:
           name: FlClash-android-arm64
           path: ./dist/*
-
-      - name: Prepare Release Info
-        id: release_info
-        shell: bash
-        run: |
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-            echo "name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-          else
-            echo "tag=v0.9.2-build.${{ github.run_number }}" >> $GITHUB_OUTPUT
-            echo "name=Release v0.9.2-build.${{ github.run_number }}" >> $GITHUB_OUTPUT
-          fi
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
