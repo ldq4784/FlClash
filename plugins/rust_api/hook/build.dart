@@ -28,7 +28,11 @@ Map<String, String> _bindgenEnvironment(BuildInput input) {
     return const {};
   }
   final llvmRoot = File.fromUri(compiler).parent.parent;
-  for (final name in const ['lib', 'lib64']) {
+  for (final name in [
+    'musl${Platform.pathSeparator}lib',
+    'lib',
+    'lib64',
+  ]) {
     final directory = Directory(
       '${llvmRoot.path}${Platform.pathSeparator}$name',
     );
