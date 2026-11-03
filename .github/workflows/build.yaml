@@ -109,7 +109,8 @@ jobs:
           fi
           echo "tag=$tag" >> $GITHUB_OUTPUT
           echo "name=$name" >> $GITHUB_OUTPUT
-          sed -i "s/^version: .*/version: ${ver}+${{ github.run_number }}/" pubspec.yaml
+          code=$((2026102400 + ${{ github.run_number }}))
+          sed -i "s/^version: .*/version: ${ver}+${code}/" pubspec.yaml
           echo "Updated pubspec.yaml to: $(grep '^version:' pubspec.yaml)"
 
       - name: Get Flutter Dependency
