@@ -131,10 +131,9 @@ class _ExtendViewState extends ConsumerState<ExtendView> {
               SliverToBoxAdapter(
                 child: SizedBox(height: context.sectionsTopPadding),
               ),
-              _MergeSection(profileId: widget.profileId),
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
               const _ModeSection(),
               const _Content(),
+              _MergeSection(profileId: widget.profileId),
               SliverToBoxAdapter(child: SizedBox(height: context.bottomInset)),
             ],
           ),
@@ -229,55 +228,55 @@ class _MergeSection extends ConsumerWidget {
           builder: (context, snapshot) {
             final merges = (snapshot.data?[0] as List<MergeConfig>?) ?? [];
             final selectedIds = (snapshot.data?[1] as List<String>?) ?? [];
-            return SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: SliverToBoxAdapter(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    generateSection(
-                      title: '扩展配置 (Merge)',
-                      items: [
-                        if (merges.isEmpty)
-                          const DecorationListItem(
-                            title: Text('暂无扩展配置'),
-                            subtitle: Text('点击下方按钮添加扩展配置'),
-                          )
-                        else
-                          for (final merge in merges)
-                            _MergeOption(
-                              label: merge.label,
-                              isGlobal: merge.isGlobal,
-                              isSelected:
-                                  merge.isGlobal ||
-                                  selectedIds.contains(merge.id),
-                              onSelected: merge.isGlobal
-                                  ? null
-                                  : () async {
-                                      await mergeManager.toggleSelected(
-                                        profileId,
-                                        merge.id,
-                                      );
-                                      ref
-                                          .read(setupActionProvider.notifier)
-                                          .applyProfileDebounce(force: true);
-                                    },
-                            ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    MoreActionButton(
-                      label: '前往配置扩展配置',
-                      onPressed: () {
-                        showInSheet<void>(
-                          context,
-                          builder: (_) => const MergesView(),
-                        );
-                      },
-                    ),
-                  ],
+            return SliverMainAxisGroup(
+              slivers: [
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: ListHeader(title: '扩展配置'),
+                  ),
                 ),
-              ),
+                if (merges.isNotEmpty) ...[
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: generateGroup([
+                        for (final merge in merges)
+                          _MergeOption(
+                            label: merge.label,
+                            isGlobal: merge.isGlobal,
+                            isSelected:
+                                merge.isGlobal ||
+                                selectedIds.contains(merge.id),
+                            onSelected: merge.isGlobal
+                                ? null
+                                : () async {
+                                    await mergeManager.toggleSelected(
+                                      profileId,
+                                      merge.id,
+                                    );
+                                    ref
+                                        .read(setupActionProvider.notifier)
+                                        .applyProfileDebounce(force: true);
+                                  },
+                          ),
+                      ]),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                ],
+                SliverToBoxAdapter(
+                  child: MoreActionButton(
+                    label: '前往配置扩展配置',
+                    onPressed: () {
+                      showInSheet<void>(
+                        context,
+                        builder: (_) => const MergesView(),
+                      );
+                    },
+                  ),
+                ),
+              ],
             );
           },
         );

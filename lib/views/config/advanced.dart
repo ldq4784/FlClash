@@ -41,7 +41,7 @@ class AdvancedConfigView extends StatelessWidget {
       ),
       ListItem.open(
         title: const Text('扩展配置'),
-        subtitle: const Text('配置 YAML Merge 规则与属性覆写'),
+        subtitle: const Text('配置规则与属性深度合并覆写'),
         leading: const GlyphIcon(AppGlyphs.puzzle),
         widget: const MergesView(),
       ),
