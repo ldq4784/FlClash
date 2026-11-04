@@ -9,8 +9,8 @@ import 'package:fl_clash/providers/providers.dart';
 import 'package:fl_clash/state.dart';
 import 'package:fl_clash/ui/icons/icons.dart';
 import 'package:fl_clash/widgets/widgets.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:material_ui/material_ui.dart';
 
 class MergesView extends ConsumerStatefulWidget {
   const MergesView({super.key});
@@ -73,9 +73,9 @@ class _MergesViewState extends ConsumerState<MergesView> {
     );
     ref.read(setupActionProvider.notifier).applyProfileDebounce(force: true);
     if (mounted) {
-      context.showNotifier(
+      dialogs.showBanner(
         appLocalizations.geoUpdated(merge.label),
-        level: MessageLevel.success,
+        level: BannerLevel.success,
       );
     }
   }
@@ -168,31 +168,31 @@ class _MergesViewState extends ConsumerState<MergesView> {
     ref.read(setupActionProvider.notifier).applyProfileDebounce(force: true);
   }
 
-  List<CommonPopupMenuItem> _buildMenuItems(MergeConfig merge) {
+  List<PopupMenuItem> _buildMenuItems(MergeConfig merge) {
     final appLocalizations = context.appLocalizations;
     return [
-      CommonPopupMenuItem(
+      PopupMenuItem(
         glyph: AppGlyphs.edit,
         label: appLocalizations.edit,
         onPressed: () => _handleToEditor(merge),
       ),
-      CommonPopupMenuItem(
+      PopupMenuItem(
         glyph: AppGlyphs.textShort,
         label: appLocalizations.rename,
         onPressed: () => _handleRename(merge),
       ),
-      CommonPopupMenuItem(
+      PopupMenuItem(
         glyph: merge.isGlobal ? AppGlyphs.puzzle : AppGlyphs.sparkle,
         label: merge.isGlobal ? '设为单订阅模式' : '设为全局生效',
         onPressed: () => _handleToggleGlobal(merge),
       ),
       if (merge.url != null)
-        CommonPopupMenuItem(
+        PopupMenuItem(
           glyph: AppGlyphs.sync,
           label: appLocalizations.sync,
           onPressed: () => _handleSync(merge),
         ),
-      CommonPopupMenuItem(
+      PopupMenuItem(
         danger: true,
         glyph: AppGlyphs.delete,
         label: appLocalizations.delete,
@@ -249,12 +249,11 @@ class _MergesViewState extends ConsumerState<MergesView> {
         illustration: NullStatusIllustration.rules,
         label: '暂无扩展配置',
       ),
-      child: ReorderableListView.builder(
+      child: PrismReorderableListView(
         padding: const EdgeInsets.all(16).copyWith(
           top: context.contentTopPadding,
           bottom: 16 + context.bottomInset,
         ),
-        buildDefaultDragHandles: false,
         itemCount: merges.length,
         itemBuilder: (_, index) => _buildItem(merges, index),
         proxyDecorator: (_, index, animation) {
@@ -279,10 +278,10 @@ class _MergesViewState extends ConsumerState<MergesView> {
           future: mergeManager.getAll(),
           builder: (context, snapshot) {
             final merges = snapshot.data ?? [];
-            return CommonScaffold(
+            return Scaffold(
               canSort: merges.length > 1,
               actions: [
-                CommonPopupBox(
+                PopupAnchor(
                   targetBuilder: (open) {
                     return IconButton(
                       tooltip: appLocalizations.add,
@@ -290,19 +289,19 @@ class _MergesViewState extends ConsumerState<MergesView> {
                       icon: const GlyphIcon(AppGlyphs.addCircle),
                     );
                   },
-                  popupBuilder: (_) => CommonPopupMenu(
+                  popupBuilder: (_) => PopupMenu(
                     items: [
-                      CommonPopupMenuItem(
+                      PopupMenuItem(
                         glyph: AppGlyphs.compose,
                         label: appLocalizations.startFromScratch,
                         onPressed: _handleToEditor,
                       ),
-                      CommonPopupMenuItem(
+                      PopupMenuItem(
                         glyph: AppGlyphs.cloudDownload,
                         label: appLocalizations.importUrl,
                         onPressed: _handleImportFromUrl,
                       ),
-                      CommonPopupMenuItem(
+                      PopupMenuItem(
                         glyph: AppGlyphs.importFile,
                         label: appLocalizations.importFile,
                         onPressed: _handleImportFromFile,

@@ -151,12 +151,8 @@ class MergeManager {
 
   Future<void> reorder(int oldIndex, int newIndex) async {
     final list = await getAll();
-    if (oldIndex < newIndex) {
-      newIndex -= 1;
-    }
-    final item = list.removeAt(oldIndex);
-    list.insert(newIndex, item);
-    await saveAll(list);
+    final next = list.copyAndReorder(oldIndex, newIndex);
+    await saveAll(next);
   }
 
   Future<String> getContent(String id) async {
