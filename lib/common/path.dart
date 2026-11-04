@@ -129,11 +129,6 @@ class AppPath {
     return join(directory, 'merge_$profileId.yaml');
   }
 
-  Future<String> getProfileScriptPath(int profileId) async {
-    final directory = await profilesPath;
-    return join(directory, 'script_$profileId.js');
-  }
-
   Future<String> getProfilePath(String fileName) async {
     return join(await profilesPath, '$fileName.yaml');
   }

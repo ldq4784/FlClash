@@ -133,7 +133,7 @@ class _ExtendViewState extends ConsumerState<ExtendView> {
               SliverToBoxAdapter(
                 child: SizedBox(height: context.sectionsTopPadding),
               ),
-              _EnhanceSection(profileId: widget.profileId),
+              _ProfileMergeSection(profileId: widget.profileId),
               const SliverToBoxAdapter(child: SizedBox(height: 16)),
               const _ModeSection(),
               const _Content(),
@@ -213,10 +213,10 @@ class _Content extends ConsumerWidget {
   }
 }
 
-class _EnhanceSection extends StatelessWidget {
+class _ProfileMergeSection extends StatelessWidget {
   final int profileId;
 
-  const _EnhanceSection({required this.profileId});
+  const _ProfileMergeSection({required this.profileId});
 
   @override
   Widget build(BuildContext context) {
@@ -224,41 +224,16 @@ class _EnhanceSection extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       sliver: SliverToBoxAdapter(
         child: generateSection(
-          title: '扩展覆写 (Clash Verge Rev 兼容)',
+          title: '配置覆写 (YAML Merge)',
           items: [
             EnhanceTile(
-              title: '订阅扩展配置 (Profile Merge)',
-              description: 'YAML 深度合并，仅对当前订阅生效',
+              title: '扩展配置 (Merge)',
+              description: 'YAML 深度合并，支持 prepend-rules 与属性覆写',
               pathResolver: () => appPath.getProfileMergePath(profileId),
               template: profileMergeTemplate,
               language: Language.yaml,
               schema: EditorSchema.config,
               icon: AppGlyphs.edit,
-            ),
-            EnhanceTile(
-              title: '订阅扩展脚本 (Profile Script)',
-              description: 'JavaScript 脚本，仅对当前订阅生效',
-              pathResolver: () => appPath.getProfileScriptPath(profileId),
-              template: profileScriptTemplate,
-              language: Language.javaScript,
-              icon: AppGlyphs.code,
-            ),
-            EnhanceTile(
-              title: '全局扩展配置 (Global Merge)',
-              description: 'YAML 深度合并，对所有订阅生效',
-              pathResolver: () => appPath.globalMergePath,
-              template: globalMergeTemplate,
-              language: Language.yaml,
-              schema: EditorSchema.config,
-              icon: AppGlyphs.puzzle,
-            ),
-            EnhanceTile(
-              title: '全局扩展脚本 (Global Script)',
-              description: 'JavaScript 脚本，对所有订阅生效',
-              pathResolver: () => appPath.globalScriptPath,
-              template: globalScriptTemplate,
-              language: Language.javaScript,
-              icon: AppGlyphs.code,
             ),
           ],
         ),

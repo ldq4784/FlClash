@@ -39,15 +39,6 @@ const profileMergeTemplate = '''# 订阅扩展配置 (Profile Merge)
 #   - DOMAIN-SUFFIX,example.com,DIRECT
 ''';
 
-const profileScriptTemplate = '''// 订阅扩展脚本 (Profile Script)
-// 作用: 仅对当前订阅生效，在扩展链的最后执行
-//
-// 入口函数 main 接收配置对象 config，必须返回处理后的 config 对象
-function main(config) {
-  return config;
-}
-''';
-
 Map<String, dynamic> applyMerge(
   Map<String, dynamic> config,
   Map<String, dynamic> merge,
@@ -181,10 +172,6 @@ Future<bool> hasAnyEnhance({
   if (await pmFile.exists() && isNonEmptyYaml(await pmFile.readAsString())) {
     return true;
   }
-  final psFile = File(await appPath.getProfileScriptPath(profileId));
-  if (await psFile.exists() && isNonEmptyScript(await psFile.readAsString())) {
-    return true;
-  }
   if (fallbackScriptContent != null && isNonEmptyScript(fallbackScriptContent)) {
     return true;
   }
@@ -228,18 +215,7 @@ Future<Map<String, dynamic>> applyEnhanceChain({
     }
   }
 
-  var appliedProfileScript = false;
-  final psFile = File(await appPath.getProfileScriptPath(profileId));
-  if (await psFile.exists()) {
-    final content = await psFile.readAsString();
-    if (isNonEmptyScript(content)) {
-      result = await handleEvaluate(content, result);
-      appliedProfileScript = true;
-    }
-  }
-
-  if (!appliedProfileScript &&
-      fallbackScriptContent != null &&
+  if (fallbackScriptContent != null &&
       isNonEmptyScript(fallbackScriptContent)) {
     result = await handleEvaluate(fallbackScriptContent, result);
   }
