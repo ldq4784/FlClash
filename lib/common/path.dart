@@ -114,19 +114,24 @@ class AppPath {
     return join(directory.path, profilesDirectoryName);
   }
 
-  Future<String> get globalMergePath async {
-    final mHomeDirPath = await homeDirPath;
-    return join(mHomeDirPath, 'global_merge.yaml');
+  Future<String> get mergesDirPath async {
+    final path = await homeDirPath;
+    return join(path, 'merges');
   }
 
-  Future<String> get globalScriptPath async {
-    final mHomeDirPath = await homeDirPath;
-    return join(mHomeDirPath, 'global_script.js');
+  Future<String> get mergesConfigPath async {
+    final path = await homeDirPath;
+    return join(path, 'merges.json');
   }
 
-  Future<String> getProfileMergePath(int profileId) async {
+  Future<String> getMergeFilePath(String id) async {
+    final directory = await mergesDirPath;
+    return join(directory, '$id.yaml');
+  }
+
+  Future<String> getProfileSelectedMergesPath(int profileId) async {
     final directory = await profilesPath;
-    return join(directory, 'merge_$profileId.yaml');
+    return join(directory, 'selected_merges_$profileId.json');
   }
 
   Future<String> getProfilePath(String fileName) async {

@@ -10,9 +10,7 @@ import 'package:fl_clash/widgets/widgets.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fl_clash/pages/editor.dart';
-import 'package:fl_clash/ui/icons/icons.dart';
-import 'package:fl_clash/views/config/enhance.dart';
+import 'package:fl_clash/views/config/merges.dart';
 
 import 'script.dart';
 import 'standard.dart';
@@ -133,7 +131,7 @@ class _ExtendViewState extends ConsumerState<ExtendView> {
               SliverToBoxAdapter(
                 child: SizedBox(height: context.sectionsTopPadding),
               ),
-              _ProfileMergeSection(profileId: widget.profileId),
+              _MergeSection(profileId: widget.profileId),
               const SliverToBoxAdapter(child: SizedBox(height: 16)),
               const _ModeSection(),
               const _Content(),
@@ -213,31 +211,102 @@ class _Content extends ConsumerWidget {
   }
 }
 
-class _ProfileMergeSection extends StatelessWidget {
+class _MergeSection extends ConsumerWidget {
   final int profileId;
 
-  const _ProfileMergeSection({required this.profileId});
+  const _MergeSection({required this.profileId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ListenableBuilder(
+      listenable: mergeManager.changeNotifier,
+      builder: (context, _) {
+        return FutureBuilder<List<dynamic>>(
+          future: Future.wait([
+            mergeManager.getAll(),
+            mergeManager.getSelectedIds(profileId),
+          ]),
+          builder: (context, snapshot) {
+            final merges = (snapshot.data?[0] as List<MergeConfig>?) ?? [];
+            final selectedIds = (snapshot.data?[1] as List<String>?) ?? [];
+            return SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    generateSection(
+                      title: '扩展配置 (Merge)',
+                      items: [
+                        if (merges.isEmpty)
+                          const DecorationListItem(
+                            title: Text('暂无扩展配置'),
+                            subtitle: Text('点击下方按钮添加扩展配置'),
+                          )
+                        else
+                          for (final merge in merges)
+                            _MergeOption(
+                              label: merge.label,
+                              isGlobal: merge.isGlobal,
+                              isSelected:
+                                  merge.isGlobal ||
+                                  selectedIds.contains(merge.id),
+                              onSelected: merge.isGlobal
+                                  ? null
+                                  : () async {
+                                      await mergeManager.toggleSelected(
+                                        profileId,
+                                        merge.id,
+                                      );
+                                      ref
+                                          .read(setupActionProvider.notifier)
+                                          .applyProfileDebounce(force: true);
+                                    },
+                            ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    MoreActionButton(
+                      label: '前往配置扩展配置',
+                      onPressed: () {
+                        showInSheet<void>(
+                          context,
+                          builder: (_) => const MergesView(),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _MergeOption extends StatelessWidget {
+  const _MergeOption({
+    required this.label,
+    required this.isSelected,
+    required this.isGlobal,
+    required this.onSelected,
+  });
+
+  final String label;
+  final bool isSelected;
+  final bool isGlobal;
+  final VoidCallback? onSelected;
 
   @override
   Widget build(BuildContext context) {
-    return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      sliver: SliverToBoxAdapter(
-        child: generateSection(
-          title: '配置覆写 (YAML Merge)',
-          items: [
-            EnhanceTile(
-              title: '扩展配置 (Merge)',
-              description: 'YAML 深度合并，支持 prepend-rules 与属性覆写',
-              pathResolver: () => appPath.getProfileMergePath(profileId),
-              template: profileMergeTemplate,
-              language: Language.yaml,
-              schema: EditorSchema.config,
-              icon: AppGlyphs.edit,
-            ),
-          ],
-        ),
-      ),
+    return DecorationListItem(
+      isSelected: isSelected,
+      title: Text(label),
+      subtitle: isGlobal ? const Text('全局生效') : null,
+      trailing: isSelected ? const SelectionCheck() : null,
+      onPressed: onSelected,
     );
   }
 }
