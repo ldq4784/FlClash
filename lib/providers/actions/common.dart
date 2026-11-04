@@ -4,6 +4,7 @@ part of '../action.dart';
 class CommonAction extends _$CommonAction {
   CoreController get _core => ref.read(coreHandlerProvider);
   bool _isUpdatingTraffic = false;
+  CancelToken? _updateCancelToken;
 
   @override
   void build() {}
@@ -142,228 +143,28 @@ class CommonAction extends _$CommonAction {
     ];
   }
 
-  String? _findApkUrl(Map<String, dynamic> data) {
-    final rawAssets = data['assets'];
-    if (rawAssets is List && rawAssets.isNotEmpty) {
-      final apkAssets = rawAssets
-          .whereType<Map>()
-          .where((a) => (a['name']?.toString() ?? '').endsWith('.apk'))
-          .toList();
-      if (apkAssets.isNotEmpty) {
-        final arm64 = apkAssets.firstWhereOrNull(
-          (a) => (a['name']?.toString() ?? '').contains('arm64'),
-        );
-        final selected = arm64 ?? apkAssets.first;
-        final url = selected['browser_download_url']?.toString();
-        if (url != null && url.isNotEmpty) {
-          return url;
-        }
-      }
-    }
-    final tagName = data['tag_name'] as String?;
-    if (tagName != null && tagName.isNotEmpty) {
-      final ver = tagName.startsWith('v') ? tagName.substring(1) : tagName;
-      return 'https://github.com/$repository/releases/download/$tagName/FlClash-$ver-android-arm64-v8a.apk';
-    }
-    return null;
-  }
-
-  Future<void> _downloadAndInstallApk(String url) async {
-    final tempPath = await appPath.tempDirPath;
-    final apkPath = join(tempPath, 'update.apk');
-    final file = File(apkPath);
-    if (await file.exists()) {
-      try {
-        await file.delete();
-      } catch (_) {}
-    }
-
-    final cancelToken = CancelToken();
-    final progressNotifier = ValueNotifier<double>(0.0);
-    final statusNotifier = ValueNotifier<String>('0%');
-    final dialogReady = Completer<BuildContext>();
-
-    unawaited(
-      dialogs.showCommonDialog<void>(
-        dismissible: false,
-        child: PopScope(
-          canPop: false,
-          onPopInvokedWithResult: (didPop, _) {
-            if (!didPop) {
-              cancelToken.cancel();
-              if (dialogReady.isCompleted) {
-                dialogReady.future.then((ctx) {
-                  if (ctx.mounted) Navigator.of(ctx).pop();
-                });
-              }
-            }
-          },
-          child: Builder(
-            builder: (ctx) {
-              if (!dialogReady.isCompleted) {
-                dialogReady.complete(ctx);
-              }
-              return CommonDialog(
-                title: currentAppLocalizations.download,
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      cancelToken.cancel();
-                      Navigator.of(ctx).pop();
-                    },
-                    child: Text(currentAppLocalizations.cancel),
-                  ),
-                ],
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ValueListenableBuilder<double>(
-                      valueListenable: progressNotifier,
-                      builder: (context, progress, _) {
-                        return LinearProgressIndicator(
-                          value: progress > 0 ? progress : null,
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    ValueListenableBuilder<String>(
-                      valueListenable: statusNotifier,
-                      builder: (context, text, _) {
-                        return Text(
-                          text,
-                          style: AppTextStyle.subheadline.of(context),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-    );
-
-    var success = false;
-    Object? downloadError;
-    try {
-      await request.dio.download(
-        url,
-        apkPath,
-        cancelToken: cancelToken,
-        onReceiveProgress: (count, total) {
-          if (total > 0) {
-            final progress = (count / total).clamp(0.0, 1.0);
-            progressNotifier.value = progress;
-            final currentMb = (count / (1024 * 1024)).toStringAsFixed(1);
-            final totalMb = (total / (1024 * 1024)).toStringAsFixed(1);
-            final percent = (progress * 100).toInt();
-            statusNotifier.value = '$percent% ($currentMb MB / $totalMb MB)';
-          }
-        },
-      );
-      success = true;
-    } catch (e) {
-      downloadError = e;
-    }
-
-    try {
-      final ctx = await dialogReady.future.timeout(const Duration(seconds: 2));
-      if (ctx.mounted) {
-        Navigator.of(ctx).pop();
-      }
-    } catch (_) {}
-
-    if (cancelToken.isCancelled) {
-      if (await file.exists()) {
-        try {
-          await file.delete();
-        } catch (_) {}
-      }
-      return;
-    }
-
-    if (!success) {
-      if (await file.exists()) {
-        try {
-          await file.delete();
-        } catch (_) {}
-      }
-      final errorDetail = downloadError != null
-          ? compactError(downloadError)
-          : currentAppLocalizations.unknown;
-      final retry = await dialogs.showMessage(
-        title: currentAppLocalizations.tip,
-        message: TextSpan(
-          text:
-              '${currentAppLocalizations.networkRequestFailed(errorDetail)}\n\n'
-              '${currentAppLocalizations.goDownload}?',
-        ),
-        confirmText: system.isAndroid
-            ? currentAppLocalizations.update
-            : currentAppLocalizations.goDownload,
-      );
-      if (retry == true) {
-        unawaited(
-          launchUrl(
-            Uri.parse('https://github.com/$repository/releases/latest'),
-          ),
-        );
-      }
-      return;
-    }
-
-    final installed = await app?.installApk(apkPath) ?? false;
-    if (!installed) {
-      final retry = await dialogs.showMessage(
-        title: currentAppLocalizations.tip,
-        message: TextSpan(text: currentAppLocalizations.goDownload),
-        confirmText: system.isAndroid
-            ? currentAppLocalizations.update
-            : currentAppLocalizations.goDownload,
-      );
-      if (retry == true) {
-        unawaited(
-          launchUrl(
-            Uri.parse('https://github.com/$repository/releases/latest'),
-          ),
-        );
-      }
-    }
-  }
-
   Future<void> checkUpdateResultHandle({
     Map<String, dynamic>? data,
     bool isUser = false,
   }) async {
     if (data != null) {
       final context = globalState.navigatorKey.currentContext!;
+      final tag = data['tag_name'] as String;
+      final suffix = selfUpdateSuffix;
       final res = await dialogs.showMessage(
         title: currentAppLocalizations.discoverNewVersion,
-        message: _releaseSpan(
-          context,
-          data['tag_name'] as String,
-          data['body'] as String?,
-        ),
-        confirmText: system.isAndroid
-            ? currentAppLocalizations.update
-            : currentAppLocalizations.goDownload,
+        message: _releaseSpan(context, tag, data['body'] as String?),
+        confirmText: suffix == null
+            ? currentAppLocalizations.goDownload
+            : currentAppLocalizations.update,
         cancelText: isUser ? null : currentAppLocalizations.noLongerRemind,
       );
       if (res == true) {
-        if (system.isAndroid) {
-          final apkUrl = _findApkUrl(data);
-          if (apkUrl != null) {
-            await _downloadAndInstallApk(apkUrl);
-            return;
-          }
+        if (suffix == null) {
+          _openReleasePage();
+        } else {
+          unawaited(_downloadUpdate(tag, releaseAssetName(tag, suffix)));
         }
-        unawaited(
-          launchUrl(
-            Uri.parse('https://github.com/$repository/releases/latest'),
-          ),
-        );
       } else if (!isUser && res == false) {
         ref
             .read(appSettingProvider.notifier)
@@ -376,6 +177,124 @@ class CommonAction extends _$CommonAction {
           message: TextSpan(text: currentAppLocalizations.checkUpdateError),
         ),
       );
+    }
+  }
+
+  void _openReleasePage() {
+    unawaited(
+      launchUrl(Uri.parse('https://github.com/$repository/releases/latest')),
+    );
+  }
+
+  /// Downloads the latest release for this build even when it is not newer.
+  Future<void> testUpdateDownload() async {
+    final suffix = selfUpdateSuffix;
+    if (suffix == null || ref.read(updateDownloadStateProvider) != null) {
+      return;
+    }
+    final release = await globalState.loadingRun(
+      request.latestRelease,
+      title: currentAppLocalizations.updateDownloadTest,
+      tag: LoadingTag.checkUpdate,
+    );
+    if (release == null) return;
+    final tag = release['tag_name'] as String;
+    await _downloadUpdate(tag, releaseAssetName(tag, suffix));
+  }
+
+  Future<void> _downloadUpdate(String tag, String name) async {
+    final download = ref.read(updateDownloadStateProvider.notifier);
+    if (download.value != null) return;
+    final cancelToken = CancelToken();
+    _updateCancelToken = cancelToken;
+    download.value = UpdateDownloading(tag);
+    dialogs.showBanner(currentAppLocalizations.updateDownloadStarted);
+    try {
+      final directory = await appPath.updateDirPath;
+      await clearUpdateDownloads();
+      await Directory(directory).create(recursive: true);
+      var shown = 0;
+      final path = await request.downloadVerifiedRelease(
+        tag: tag,
+        name: name,
+        directory: directory,
+        cancelToken: cancelToken,
+        onReceiveProgress: (received, total) {
+          // Every chunk would otherwise rebuild the status on its own frame.
+          final step = total > 0 ? total / 100 : 1 << 20;
+          if (received - shown < step && received != total) return;
+          shown = received;
+          download.value = UpdateDownloading(
+            tag,
+            received: received,
+            total: total,
+          );
+        },
+      );
+      download.value = UpdateReady(tag, path);
+      dialogs.showBanner(
+        currentAppLocalizations.updateReadyTip,
+        level: BannerLevel.success,
+        onTap: () => unawaited(installUpdate()),
+      );
+    } catch (error) {
+      download.value = null;
+      await clearUpdateDownloads();
+      if (error is DioException && CancelToken.isCancel(error)) {
+        return;
+      }
+      commonPrint.log(
+        'Update download failed: ${compactError(error)}',
+        logLevel: LogLevel.warning,
+      );
+      await _showUpdateFailure(
+        userFacingErrorMessage(error, currentAppLocalizations),
+      );
+    } finally {
+      if (identical(_updateCancelToken, cancelToken)) {
+        _updateCancelToken = null;
+      }
+    }
+  }
+
+  void cancelUpdateDownload() {
+    _updateCancelToken?.cancel();
+  }
+
+  Future<void> discardUpdate() async {
+    if (ref.read(updateDownloadStateProvider) is! UpdateReady) return;
+    ref.read(updateDownloadStateProvider.notifier).value = null;
+    await clearUpdateDownloads();
+  }
+
+  Future<void> installUpdate() async {
+    final download = ref.read(updateDownloadStateProvider);
+    if (download is! UpdateReady) return;
+    if (system.isAndroid) {
+      ref.read(updateDownloadStateProvider.notifier).value = null;
+      final status = await app?.installPackage(download.path);
+      await clearUpdateDownloads();
+      if (status != null && packageInstallFailed(status)) {
+        await _showUpdateFailure(currentAppLocalizations.updateInstallFailed);
+      }
+      return;
+    }
+    final started = windows?.runas(download.path, windowsUpdateArguments(pid));
+    if (started == true) {
+      await ref.read(systemActionProvider.notifier).handleExit();
+    } else if (started == false) {
+      await _showUpdateFailure(currentAppLocalizations.updateInstallFailed);
+    }
+  }
+
+  Future<void> _showUpdateFailure(String message) async {
+    final res = await dialogs.showMessage(
+      title: currentAppLocalizations.updateFailed,
+      message: TextSpan(text: message),
+      confirmText: currentAppLocalizations.goDownload,
+    );
+    if (res == true) {
+      _openReleasePage();
     }
   }
 }
