@@ -114,6 +114,26 @@ class AppPath {
     return join(directory.path, profilesDirectoryName);
   }
 
+  Future<String> get globalMergePath async {
+    final mHomeDirPath = await homeDirPath;
+    return join(mHomeDirPath, 'global_merge.yaml');
+  }
+
+  Future<String> get globalScriptPath async {
+    final mHomeDirPath = await homeDirPath;
+    return join(mHomeDirPath, 'global_script.js');
+  }
+
+  Future<String> getProfileMergePath(int profileId) async {
+    final directory = await profilesPath;
+    return join(directory, 'merge_$profileId.yaml');
+  }
+
+  Future<String> getProfileScriptPath(int profileId) async {
+    final directory = await profilesPath;
+    return join(directory, 'script_$profileId.js');
+  }
+
   Future<String> getProfilePath(String fileName) async {
     return join(await profilesPath, '$fileName.yaml');
   }

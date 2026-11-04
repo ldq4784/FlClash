@@ -6,6 +6,7 @@ import 'package:fl_clash/views/config/network.dart';
 import 'package:fl_clash/views/config/scripts.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'enhance.dart';
 import 'rules.dart';
 
 class AdvancedConfigView extends StatelessWidget {
@@ -37,6 +38,12 @@ class AdvancedConfigView extends StatelessWidget {
         title: Text(appLocalizations.script),
         leading: const GlyphIcon(AppGlyphs.code),
         widget: const ScriptsView(),
+      ),
+      ListItem.open(
+        title: const Text('扩展覆写 (Enhance)'),
+        subtitle: const Text('全局 Merge 配置与 JavaScript 脚本'),
+        leading: const GlyphIcon(AppGlyphs.puzzle),
+        widget: const GlobalEnhanceView(),
       ),
     ];
     return BaseScaffold(
