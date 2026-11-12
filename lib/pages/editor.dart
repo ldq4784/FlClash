@@ -376,6 +376,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
         child: Focus(
           autofocus: true,
           child: Scaffold(
+            backAction: () => Navigator.maybePop(context),
             titleWidget: _EditorTitleField(
               controller: _titleController,
               enabled: widget.titleEditable,

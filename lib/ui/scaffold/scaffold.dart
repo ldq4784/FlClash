@@ -517,7 +517,9 @@ class ScaffoldState extends State<Scaffold>
       );
     }
     final route = ModalRoute.of(context);
-    if (route?.impliesAppBarDismissal != true) {
+    final canDismiss = route?.impliesAppBarDismissal == true ||
+        (route is PageRoute && !route.isFirst);
+    if (!canDismiss) {
       return null;
     }
     return _buildPopButton(
@@ -730,10 +732,12 @@ class ScaffoldState extends State<Scaffold>
   PreferredSizeWidget _buildAppBar(VoidCallback? backAction, _SheetForm form) {
     final isCompact = form.isCompact;
     final isMobileView = ViewScope.isMobileOf(context);
+    final route = ModalRoute.of(context);
     final pushed =
         form.pop == null &&
         isMobileView &&
-        ModalRoute.of(context)?.impliesAppBarDismissal == true;
+        (route?.impliesAppBarDismissal == true ||
+            (route is PageRoute && !route.isFirst));
     final compactTitle = isCompact || pushed;
     final titleEndInset = appBarActionInset(
       isCompactBar(context, isMobileView),
