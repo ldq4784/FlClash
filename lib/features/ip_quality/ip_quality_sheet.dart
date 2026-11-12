@@ -14,7 +14,8 @@ import 'labels.dart';
 Future<void> showIpQualitySheet(BuildContext context, {required String ip}) {
   return showSheet<void>(
     context: context,
-    builder: (_) => _IpQualitySheet(ip: ip),
+    props: nestedPagedSheetProps,
+    builder: (_) => NestedPagedSheet(builder: (_) => _IpQualitySheet(ip: ip)),
   );
 }
 

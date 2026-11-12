@@ -27,13 +27,20 @@ Future<void> syncProfile(WidgetRef ref, Profile profile) async {
 }
 
 void showProfileDetailSheet(BuildContext context) {
-  showSheet<void>(context: context, builder: (_) => const ProfileDetailSheet());
+  showSheet<void>(
+    context: context,
+    props: nestedPagedSheetProps,
+    builder: (_) =>
+        NestedPagedSheet(builder: (_) => const ProfileDetailSheet()),
+  );
 }
 
 void showProfilesSheet(BuildContext context) {
   showSheet<void>(
     context: context,
-    builder: (_) => const ProfilesView(picker: true),
+    props: nestedPagedSheetProps,
+    builder: (_) =>
+        NestedPagedSheet(builder: (_) => const ProfilesView(picker: true)),
   );
 }
 

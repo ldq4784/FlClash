@@ -132,9 +132,12 @@ class _MemoryInfoState extends ConsumerState<MemoryInfo>
     stopPolling();
     await showSheet(
       context: context,
-      builder: (_) => MemoryDetailSheet(
-        initial: _memoryStateNotifier.value,
-        memoryReader: widget.memoryReader,
+      props: nestedPagedSheetProps,
+      builder: (_) => NestedPagedSheet(
+        builder: (_) => MemoryDetailSheet(
+          initial: _memoryStateNotifier.value,
+          memoryReader: widget.memoryReader,
+        ),
       ),
     );
     if (!mounted) {

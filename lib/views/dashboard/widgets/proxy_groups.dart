@@ -33,7 +33,9 @@ Future<void> showProxiesSheet(BuildContext context, {String? groupName}) async {
   container.read(query.notifier).value = '';
   await showSheet<void>(
     context: context,
-    builder: (_) => const ProxiesView(picker: true),
+    props: nestedPagedSheetProps,
+    builder: (_) =>
+        NestedPagedSheet(builder: (_) => const ProxiesView(picker: true)),
   );
   container.read(query.notifier).value = pageQuery;
 }
