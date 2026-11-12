@@ -443,10 +443,8 @@ class ScaffoldState extends State<Scaffold>
     );
   }
 
-  VoidCallback _closeSheet(VoidCallback? backAction) =>
-      SheetProvider.of(context)?.onClose ??
-      backAction ??
-      () => context.safeNestedPop();
+  VoidCallback get _closeSheet =>
+      SheetProvider.of(context)?.onClose ?? () => context.safeNestedPop();
 
   Widget _buildPopButton({
     required bool useCloseIcon,
@@ -503,7 +501,9 @@ class ScaffoldState extends State<Scaffold>
       return _buildPopButton(
         useCloseIcon: pop.useCloseIcon,
         onPressed: pop.useCloseIcon
-            ? _closeSheet(backAction)
+            ? (SheetProvider.of(context)?.onClose ??
+                backAction ??
+                _closeSheet)
             : backAction ?? () => Navigator.of(context).pop(),
       );
     }
