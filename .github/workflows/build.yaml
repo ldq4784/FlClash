@@ -133,16 +133,129 @@ jobs:
           ANDROID_NDK_HOME: ${{ steps.build-ndk.outputs.ndk-path }}
         run: dart setup.dart android --arch arm64 --env stable -v
 
-      - name: Generate sha256
-        run: |
-          cd ./dist
-          sha256sum ./* > SHA256SUMS
-
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: FlClash-android-arm64
-          path: ./dist/*
+          path: ./dist/*.apk
+
+  build-windows-amd64:
+    name: Build Windows amd64
+    runs-on: windows-2022
+    steps:
+      - name: Enable git long paths
+        run: git config --global core.longpaths true
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Add tools to PATH
+        shell: pwsh
+        run: |
+          Add-Content $env:GITHUB_PATH "$env:LOCALAPPDATA\Pub\Cache\bin"
+          if (Test-Path "$env:USERPROFILE\.cargo\bin") {
+            Add-Content $env:GITHUB_PATH "$env:USERPROFILE\.cargo\bin"
+          }
+          if (Test-Path "C:\Program Files (x86)\Inno Setup 6") {
+            Add-Content $env:GITHUB_PATH "C:\Program Files (x86)\Inno Setup 6"
+          }
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: core/go.sum
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Prepare Release Info
+        id: release_info
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            tag="${{ github.ref_name }}"
+            name="${{ github.ref_name }}"
+            ver="${tag#v}"
+          else
+            tag="v0.9.3-build.${{ github.run_number }}"
+            name="Release v0.9.3-build.${{ github.run_number }}"
+            ver="0.9.3-build.${{ github.run_number }}"
+          fi
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+          echo "name=$name" >> $GITHUB_OUTPUT
+          code=$((2026102400 + ${{ github.run_number }}))
+          sed -i "s/^version: .*/version: ${ver}+${code}/" pubspec.yaml
+          echo "Updated pubspec.yaml to: $(grep '^version:' pubspec.yaml)"
+
+      - name: Get Flutter Dependency
+        run: |
+          flutter --version
+          flutter pub get
+
+      - name: Fetch CA certificates
+        shell: bash
+        env:
+          CA_BUNDLE: cacert-2026-09-25.pem
+          CA_BUNDLE_SHA256: a41b5d356aea97a529fe27e0f7316d2f9d946d75927476cf9cf1b90637d00505
+        run: |
+          bundle=core/Clash.Meta/component/ca/ca-certificates.crt
+          curl -fsSL --retry 3 -o "$bundle" "https://curl.se/ca/$CA_BUNDLE"
+          echo "$CA_BUNDLE_SHA256  $bundle" | sha256sum -c -
+
+      - name: Build Windows amd64
+        run: dart setup.dart windows --env stable -v
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlClash-windows-amd64
+          path: |
+            ./dist/*.exe
+            ./dist/*.zip
+
+  release:
+    name: Create Release
+    needs: [build-android-arm64, build-windows-amd64]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare Release Info
+        id: release_info
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            tag="${{ github.ref_name }}"
+            name="${{ github.ref_name }}"
+          else
+            tag="v0.9.3-build.${{ github.run_number }}"
+            name="Release v0.9.3-build.${{ github.run_number }}"
+          fi
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+          echo "name=$name" >> $GITHUB_OUTPUT
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: FlClash-*
+          path: ./dist
+          merge-multiple: true
+
+      - name: Generate sha256
+        shell: bash
+        run: |
+          cd ./dist
+          rm -f SHA256SUMS
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
