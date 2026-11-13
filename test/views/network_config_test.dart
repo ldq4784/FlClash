@@ -71,7 +71,6 @@ final _toggleCases = <_ToggleCase>[
     'bypass private route',
     const BypassPrivateRouteItem(),
     (c) => c.read(networkSettingProvider).bypassPrivateRoute,
-    initial: true,
   ),
 ];
 

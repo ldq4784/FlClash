@@ -426,7 +426,7 @@ void main() {
       const props = NetworkProps();
       expect(props.systemProxy, true);
       expect(props.bypassDomain, defaultBypassDomain);
-      expect(props.bypassPrivateRoute, true);
+      expect(props.bypassPrivateRoute, false);
       expect(props.autoSetSystemDns, true);
       expect(props.appendSystemDns, false);
     });

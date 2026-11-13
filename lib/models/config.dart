@@ -386,7 +386,7 @@ abstract class NetworkProps with _$NetworkProps {
   const factory NetworkProps({
     @Default(true) bool systemProxy,
     @Default(defaultBypassDomain) List<String> bypassDomain,
-    @Default(true) bool bypassPrivateRoute,
+    @Default(false) bool bypassPrivateRoute,
     @Default(true) bool autoSetSystemDns,
     @Default(false) bool appendSystemDns,
     @Default(defaultAuthenticationProps) AuthenticationProps authentication,
