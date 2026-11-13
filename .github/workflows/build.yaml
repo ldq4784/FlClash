@@ -220,9 +220,92 @@ jobs:
             ./dist/*.exe
             ./dist/*.zip
 
+  build-macos-arm64:
+    name: Build macOS arm64
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Add tools to PATH
+        run: |
+          echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+          if [ -d "$HOME/.cargo/bin" ]; then
+            echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          fi
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: core/go.sum
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Setup Xcode
+        run: |
+          for xc in /Applications/Xcode_26.3.app /Applications/Xcode_26.2.app /Applications/Xcode_26.*.app; do
+            if [ -d "$xc" ]; then
+              sudo xcode-select -s "$xc"
+              break
+            fi
+          done
+          xcodebuild -version
+
+      - name: Prepare Release Info
+        id: release_info
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            tag="${{ github.ref_name }}"
+            name="${{ github.ref_name }}"
+            ver="${tag#v}"
+          else
+            tag="v0.9.3-build.${{ github.run_number }}"
+            name="Release v0.9.3-build.${{ github.run_number }}"
+            ver="0.9.3-build.${{ github.run_number }}"
+          fi
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+          echo "name=$name" >> $GITHUB_OUTPUT
+          code=$((2026102400 + ${{ github.run_number }}))
+          sed -i.bak "s/^version: .*/version: ${ver}+${code}/" pubspec.yaml
+          rm -f pubspec.yaml.bak
+          echo "Updated pubspec.yaml to: $(grep '^version:' pubspec.yaml)"
+
+      - name: Get Flutter Dependency
+        run: |
+          flutter --version
+          flutter pub get
+
+      - name: Fetch CA certificates
+        shell: bash
+        env:
+          CA_BUNDLE: cacert-2026-09-25.pem
+          CA_BUNDLE_SHA256: a41b5d356aea97a529fe27e0f7316d2f9d946d75927476cf9cf1b90637d00505
+        run: |
+          bundle=core/Clash.Meta/component/ca/ca-certificates.crt
+          curl -fsSL --retry 3 -o "$bundle" "https://curl.se/ca/$CA_BUNDLE"
+          echo "$CA_BUNDLE_SHA256  $bundle" | shasum -a 256 -c -
+
+      - name: Build macOS arm64
+        run: dart setup.dart macos --env stable -v
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlClash-macos-arm64
+          path: ./dist/*.dmg
+
   release:
     name: Create Release
-    needs: [build-android-arm64, build-windows-amd64]
+    needs: [build-android-arm64, build-windows-amd64, build-macos-arm64]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
