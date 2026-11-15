@@ -11,6 +11,7 @@
 namespace {
 
 constexpr UINT_PTR kDisableAccessibilitySubclassId = 1;
+thread_local HHOOK g_view_create_hook = nullptr;
 
 // Bypass Flutter's WM_GETOBJECT handler to prevent AccessibilityBridge activation.
 LRESULT CALLBACK FlutterViewSubclassProc(HWND hwnd,
@@ -20,13 +21,43 @@ LRESULT CALLBACK FlutterViewSubclassProc(HWND hwnd,
                                          UINT_PTR const subclass_id,
                                          DWORD_PTR) noexcept {
   if (message == WM_GETOBJECT) {
-    return ::DefWindowProc(hwnd, message, wparam, lparam);
+    return 0;
   }
   if (message == WM_NCDESTROY) {
     ::RemoveWindowSubclass(hwnd, FlutterViewSubclassProc, subclass_id);
   }
   return ::DefSubclassProc(hwnd, message, wparam, lparam);
 }
+
+LRESULT CALLBACK ViewCreateCbtProc(int const code,
+                                   WPARAM const wparam,
+                                   LPARAM const lparam) noexcept {
+  if (code == HCBT_CREATEWND && lparam != 0) {
+    const auto* create_info = reinterpret_cast<const CBT_CREATEWND*>(lparam);
+    if (create_info->lpcs != nullptr &&
+        (create_info->lpcs->style & WS_CHILD) != 0) {
+      ::SetWindowSubclass(reinterpret_cast<HWND>(wparam),
+                          FlutterViewSubclassProc,
+                          kDisableAccessibilitySubclassId, 0);
+    }
+  }
+  return ::CallNextHookEx(g_view_create_hook, code, wparam, lparam);
+}
+
+struct ScopedViewCreateHook {
+  ScopedViewCreateHook() noexcept {
+    g_view_create_hook = ::SetWindowsHookEx(
+        WH_CBT, ViewCreateCbtProc, nullptr, ::GetCurrentThreadId());
+  }
+  ~ScopedViewCreateHook() {
+    if (g_view_create_hook != nullptr) {
+      ::UnhookWindowsHookEx(g_view_create_hook);
+      g_view_create_hook = nullptr;
+    }
+  }
+  ScopedViewCreateHook(const ScopedViewCreateHook&) = delete;
+  ScopedViewCreateHook& operator=(const ScopedViewCreateHook&) = delete;
+};
 
 }  // namespace
 
@@ -44,19 +75,23 @@ bool FlutterWindow::OnCreate() {
 
   // The size here must match the window dimensions to avoid unnecessary surface
   // creation / destruction in the startup path.
-  flutter_controller_ = std::make_unique<flutter::FlutterViewController>(
-      frame.right - frame.left, frame.bottom - frame.top, project_);
+  // Guard creation and subclass before SetFocus fires MSCTF WM_GETOBJECT.
+  {
+    [[maybe_unused]] const ScopedViewCreateHook view_create_hook;
+    flutter_controller_ = std::make_unique<flutter::FlutterViewController>(
+        frame.right - frame.left, frame.bottom - frame.top, project_);
+  }
   // Ensure that basic setup of the controller was successful.
   if (!flutter_controller_->engine() || !flutter_controller_->view()) {
     return false;
   }
-  RegisterPlugins(flutter_controller_->engine());
   const HWND flutter_view = flutter_controller_->view()->GetNativeWindow();
-  SetChildContent(flutter_view);
   if (::SetWindowSubclass(flutter_view, FlutterViewSubclassProc,
                           kDisableAccessibilitySubclassId, 0)) {
     flutter_view_ = flutter_view;
   }
+  RegisterPlugins(flutter_controller_->engine());
+  SetChildContent(flutter_view);
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
 
@@ -71,15 +106,15 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  if (flutter_controller_) {
+    flutter_controller_ = nullptr;
+  }
   if (flutter_view_) {
     if (::IsWindow(flutter_view_)) {
       ::RemoveWindowSubclass(flutter_view_, FlutterViewSubclassProc,
                              kDisableAccessibilitySubclassId);
     }
     flutter_view_ = nullptr;
-  }
-  if (flutter_controller_) {
-    flutter_controller_ = nullptr;
   }
 
   Win32Window::OnDestroy();
@@ -90,7 +125,7 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
   if (message == WM_GETOBJECT) {
-    return ::DefWindowProc(hwnd, message, wparam, lparam);
+    return 0;
   }
 
   // Give Flutter, including plugins, an opportunity to handle window messages.
