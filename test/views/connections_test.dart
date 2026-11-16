@@ -7,12 +7,12 @@ import 'package:fl_clash/core/interface.dart';
 import 'package:fl_clash/features/features.dart';
 import 'package:fl_clash/models/models.dart';
 import 'package:fl_clash/providers/app.dart';
+import 'package:fl_clash/providers/config.dart';
 import 'package:fl_clash/providers/core.dart';
 import 'package:fl_clash/providers/database.dart';
 import 'package:fl_clash/state.dart';
-import 'package:fl_clash/ui/ui.dart';
 import 'package:fl_clash/views/connection/requests.dart';
-import 'package:fl_clash/widgets/record.dart';
+import 'package:fl_clash/widgets/widgets.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -79,6 +79,7 @@ void main() {
   Future<void> pumpConnections(
     WidgetTester tester, {
     double width = 1400,
+    bool? isAndroid,
   }) async {
     tester.view.physicalSize = Size(width, 1000);
     tester.view.devicePixelRatio = 1;
@@ -88,8 +89,11 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const TestApp(
-          child: RequestsView(initialFeed: RequestFeed.live),
+        child: TestApp(
+          child: RequestsView(
+            initialFeed: RequestFeed.live,
+            isAndroid: isAndroid,
+          ),
         ),
       ),
     );
@@ -445,4 +449,35 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(seconds: 2));
   });
+
+  testWidgets(
+    'table process column shows app icons on Android when findProcessMode is always',
+    (tester) async {
+      container.listen(patchClashConfigProvider, (_, _) {});
+      container
+          .read(patchClashConfigProvider.notifier)
+          .update(
+            (state) => state.copyWith(findProcessMode: FindProcessMode.always),
+          );
+      when(core.getConnections).thenAnswer(
+        (_) async => [
+          _tracker(id: 'a', host: 'alpha.test', process: 'com.example.alpha'),
+          _tracker(id: 'b', host: 'beta.test', process: ''),
+        ],
+      );
+
+      await pumpConnections(tester, isAndroid: true);
+      await pumpSettled(tester);
+
+      expect(find.byType(PackageIcon), findsOneWidget);
+      expect(
+        tester.widget<PackageIcon>(find.byType(PackageIcon)).packageName,
+        'com.example.alpha',
+      );
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 2));
+    },
+  );
 }

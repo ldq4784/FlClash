@@ -6,11 +6,11 @@ import 'package:fl_clash/providers/providers.dart';
 import 'package:fl_clash/state.dart';
 import 'package:fl_clash/ui/icons/icons.dart';
 import 'package:fl_clash/views/connection/requests.dart';
+import 'package:fl_clash/widgets/widgets.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:prism_ui/prism_ui.dart';
 
 import '../helpers/glyph_finders.dart';
 import '../helpers/scrollbar.dart';
@@ -77,6 +77,7 @@ void main() {
   Future<void> pumpRequests(
     WidgetTester tester, {
     Size size = _tableSize,
+    bool? isAndroid,
   }) async {
     container.read(viewSizeProvider.notifier).update((_) => size);
     tester.view.physicalSize = size;
@@ -87,8 +88,11 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const TestApp(
-          child: RequestsView(initialFeed: RequestFeed.recent),
+        child: TestApp(
+          child: RequestsView(
+            initialFeed: RequestFeed.recent,
+            isAndroid: isAndroid,
+          ),
         ),
       ),
     );
@@ -526,6 +530,62 @@ void main() {
 
     expect(find.text('Request details'), findsOneWidget);
     expect(find.byType(TrackerInfoDetailView), findsOneWidget);
+
+    await teardownView(tester);
+  });
+
+  testWidgets('table process column shows app icons on Android only when '
+      'findProcessMode is always and filters when tapped', (tester) async {
+    container.listen(patchClashConfigProvider, (_, _) {});
+    container
+        .read(patchClashConfigProvider.notifier)
+        .update(
+          (state) => state.copyWith(findProcessMode: FindProcessMode.always),
+        );
+    seedRequests([
+      _tracker(id: 'a', host: 'alpha.test', process: 'com.example.alpha'),
+      _tracker(id: 'b', host: 'beta.test', process: ''),
+    ]);
+
+    await pumpRequests(tester, isAndroid: true);
+
+    expect(find.byType(PackageIcon), findsOneWidget);
+    expect(
+      tester.widget<PackageIcon>(find.byType(PackageIcon)).packageName,
+      'com.example.alpha',
+    );
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byType(PackageIcon));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('alpha.test'), findsWidgets);
+    expect(find.textContaining('beta.test'), findsNothing);
+
+    await tester.tap(find.widgetWithText(Chip, 'com.example.alpha'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('beta.test'), findsWidgets);
+
+    container
+        .read(patchClashConfigProvider.notifier)
+        .update(
+          (state) => state.copyWith(findProcessMode: FindProcessMode.off),
+        );
+    await tester.pump();
+    expect(find.byType(PackageIcon), findsNothing);
+
+    container
+        .read(patchClashConfigProvider.notifier)
+        .update(
+          (state) => state.copyWith(findProcessMode: FindProcessMode.always),
+        );
+    await tester.pump();
+    expect(find.byType(PackageIcon), findsOneWidget);
+
+    await teardownView(tester);
+
+    await pumpRequests(tester, isAndroid: false);
+    expect(find.byType(PackageIcon), findsNothing);
 
     await teardownView(tester);
   });

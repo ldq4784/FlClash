@@ -17,12 +17,14 @@ class RequestsView extends ConsumerStatefulWidget {
   final ScrollController? scrollController;
   final RequestFeed? initialFeed;
   final Future<List<TrackerInfo>> Function()? connectionsReader;
+  final bool? isAndroid;
 
   const RequestsView({
     super.key,
     this.scrollController,
     this.initialFeed,
     @visibleForTesting this.connectionsReader,
+    @visibleForTesting this.isAndroid,
   });
 
   @override
@@ -165,6 +167,7 @@ class _RequestsViewState extends ConsumerState<RequestsView>
         filters: _filters,
         scrollController: widget.scrollController,
         onResumeToEnd: _showLatestRequests,
+        isAndroid: widget.isAndroid,
       ),
       RequestFeed.live => _LiveFeed(
         key: _liveFeed,
@@ -172,6 +175,7 @@ class _RequestsViewState extends ConsumerState<RequestsView>
         filters: _filters,
         scrollController: widget.scrollController,
         connectionsReader: widget.connectionsReader,
+        isAndroid: widget.isAndroid,
       ),
     };
   }
@@ -182,12 +186,14 @@ class _RecentFeed extends StatefulWidget {
   final RecordFilterController<TrackerInfo> filters;
   final ScrollController? scrollController;
   final VoidCallback onResumeToEnd;
+  final bool? isAndroid;
 
   const _RecentFeed({
     required this.listController,
     required this.filters,
     required this.scrollController,
     required this.onResumeToEnd,
+    this.isAndroid,
   });
 
   @override
@@ -242,8 +248,12 @@ class _RecentFeedState extends State<_RecentFeed> {
             tableId: 'requests',
             items: requests,
             reverse: true,
-            columnsOf: (width) =>
-                trackerInfoColumns(context, width: width, isLive: false),
+            columnsOf: (width) => trackerInfoColumns(
+              context,
+              width: width,
+              isLive: false,
+              isAndroid: widget.isAndroid,
+            ),
             builder: (context, table, requests) {
               final padding = EdgeInsets.only(
                 top: context.contentTopPadding,
@@ -314,6 +324,7 @@ class _LiveFeed extends ConsumerStatefulWidget {
   final RecordFilterController<TrackerInfo> filters;
   final ScrollController? scrollController;
   final Future<List<TrackerInfo>> Function()? connectionsReader;
+  final bool? isAndroid;
 
   const _LiveFeed({
     super.key,
@@ -321,6 +332,7 @@ class _LiveFeed extends ConsumerStatefulWidget {
     required this.filters,
     required this.scrollController,
     required this.connectionsReader,
+    this.isAndroid,
   });
 
   @override
@@ -455,8 +467,12 @@ class _LiveFeedState extends ConsumerState<_LiveFeed>
           child: RecordTableFrame<TrackerInfo>(
             tableId: 'connections',
             items: connections,
-            columnsOf: (width) =>
-                trackerInfoColumns(context, width: width, isLive: true),
+            columnsOf: (width) => trackerInfoColumns(
+              context,
+              width: width,
+              isLive: true,
+              isAndroid: widget.isAndroid,
+            ),
             builder: (context, table, connections) {
               final padding = EdgeInsets.only(
                 top: context.contentTopPadding,

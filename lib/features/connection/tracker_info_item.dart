@@ -98,10 +98,7 @@ class TrackerInfoItem extends ConsumerWidget {
   @override
   Widget build(BuildContext context, ref) {
     final showIcon = ref.watch(
-      patchClashConfigProvider.select(
-        (state) =>
-            state.findProcessMode == FindProcessMode.always && system.isAndroid,
-      ),
+      patchClashConfigProvider.select(showsTrackerPackageIcon),
     );
     return ContextMenuRegion(
       menuItems: trackerInfoMenuItems(context, trackerInfo, onClose: onClose),
@@ -193,13 +190,7 @@ class _TrackerInfoBody extends StatelessWidget {
     return Row(
       spacing: 8,
       children: [
-        GestureDetector(
-          onTap: () => RecordFilterScope.add(
-            context,
-            RecordFilter(RecordFacetKind.app, process),
-          ),
-          child: PackageIcon(packageName: process, size: 24),
-        ),
+        TrackerAppIcon(packageName: process),
         Flexible(child: title),
       ],
     );
@@ -317,6 +308,28 @@ class _MitmHostSection extends ConsumerWidget {
       footer: metadata.mitmRefused
           ? appLocalizations.mitmClientRefusedCertificate
           : null,
+    );
+  }
+}
+
+bool showsTrackerPackageIcon(PatchClashConfig config, {bool? isAndroid}) =>
+    config.findProcessMode == FindProcessMode.always &&
+    (isAndroid ?? system.isAndroid);
+
+class TrackerAppIcon extends StatelessWidget {
+  final String packageName;
+  final double size;
+
+  const TrackerAppIcon({super.key, required this.packageName, this.size = 24});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => RecordFilterScope.add(
+        context,
+        RecordFilter(RecordFacetKind.app, packageName),
+      ),
+      child: PackageIcon(packageName: packageName, size: size),
     );
   }
 }
