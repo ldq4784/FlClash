@@ -8,34 +8,114 @@ import 'package:flutter/foundation.dart';
 const directOutbound = 'DIRECT';
 const routedOutbound = '';
 
-/// [id] must match the checker name registered in core/service_check.go.
-enum ServiceTarget {
-  google('google', 'Google', 'google'),
-  github('github', 'GitHub', 'github'),
-  youtube('youtube', 'YouTube', 'youtube'),
-  chatgpt('chatgpt', 'ChatGPT', 'openai'),
-  claude('claude', 'Claude', 'claude'),
-  gemini('gemini', 'Gemini', 'gemini'),
-  netflix('netflix', 'Netflix', 'netflix'),
-  disneyPlus('disney-plus', 'Disney+', 'disneyplus'),
-  primeVideo('prime-video', 'Prime Video', 'primevideo'),
-  spotify('spotify', 'Spotify', 'spotify'),
-  tiktok('tiktok', 'TikTok', 'tiktok'),
-  discord('discord', 'Discord', 'discord'),
-  bilibili('bilibili', 'Bilibili', 'bilibili');
+/// Built-in targets match checker names registered in core/service_check.go.
+@immutable
+sealed class ServiceTarget {
+  const ServiceTarget();
 
-  const ServiceTarget(this.id, this.label, this.icon);
+  String get id;
+  String get label;
+  String? get icon;
+  String? get customUrl => null;
 
-  final String id;
-  final String label;
-  final String icon;
+  static const google = BuiltinServiceTarget('google', 'Google', 'google');
+  static const github = BuiltinServiceTarget('github', 'GitHub', 'github');
+  static const youtube = BuiltinServiceTarget('youtube', 'YouTube', 'youtube');
+  static const chatgpt = BuiltinServiceTarget('chatgpt', 'ChatGPT', 'openai');
+  static const claude = BuiltinServiceTarget('claude', 'Claude', 'claude');
+  static const gemini = BuiltinServiceTarget('gemini', 'Gemini', 'gemini');
+  static const netflix = BuiltinServiceTarget('netflix', 'Netflix', 'netflix');
+  static const disneyPlus = BuiltinServiceTarget(
+    'disney-plus',
+    'Disney+',
+    'disneyplus',
+  );
+  static const primeVideo = BuiltinServiceTarget(
+    'prime-video',
+    'Prime Video',
+    'primevideo',
+  );
+  static const spotify = BuiltinServiceTarget('spotify', 'Spotify', 'spotify');
+  static const tiktok = BuiltinServiceTarget('tiktok', 'TikTok', 'tiktok');
+  static const discord = BuiltinServiceTarget('discord', 'Discord', 'discord');
+  static const bilibili = BuiltinServiceTarget(
+    'bilibili',
+    'Bilibili',
+    'bilibili',
+  );
 
-  static ServiceTarget? byId(String id) {
+  static const List<BuiltinServiceTarget> values = [
+    google,
+    github,
+    youtube,
+    chatgpt,
+    claude,
+    gemini,
+    netflix,
+    disneyPlus,
+    primeVideo,
+    spotify,
+    tiktok,
+    discord,
+    bilibili,
+  ];
+
+  static BuiltinServiceTarget? byId(String id) {
     for (final target in values) {
       if (target.id == id) return target;
     }
     return null;
   }
+}
+
+final class BuiltinServiceTarget extends ServiceTarget {
+  const BuiltinServiceTarget(this.id, this.label, this.icon);
+
+  @override
+  final String id;
+
+  @override
+  final String label;
+
+  @override
+  final String icon;
+}
+
+final class CustomServiceTarget extends ServiceTarget {
+  const CustomServiceTarget({
+    required this.id,
+    required this.label,
+    required String url,
+  }) : customUrl = url;
+
+  @override
+  final String id;
+
+  @override
+  final String label;
+
+  @override
+  final String customUrl;
+
+  @override
+  String? get icon => null;
+
+  @override
+  bool operator ==(Object other) =>
+      other is CustomServiceTarget &&
+      other.id == id &&
+      other.label == label &&
+      other.customUrl == customUrl;
+
+  @override
+  int get hashCode => Object.hash(id, label, customUrl);
+}
+
+String customServiceLabel(String label, String url) {
+  final trimmed = label.trim();
+  if (trimmed.isNotEmpty) return trimmed;
+  final host = Uri.tryParse(url.trim())?.host ?? '';
+  return host.isNotEmpty ? host : url.trim();
 }
 
 enum ServiceProbeStatus {
@@ -62,10 +142,24 @@ enum ServiceProbeStatus {
   }
 }
 
-List<ServiceTarget> orderServiceTargets(List<String> order) {
+List<ServiceTarget> orderServiceTargets(
+  List<String> order, {
+  List<CustomService> customServices = const [],
+}) {
+  final customById = <String, CustomServiceTarget>{
+    for (final item in customServices)
+      if (item.id.isNotEmpty && item.url.isNotEmpty)
+        item.id: CustomServiceTarget(
+          id: item.id,
+          label: customServiceLabel(item.label, item.url),
+          url: item.url,
+        ),
+  };
+  ServiceTarget? resolve(String id) => ServiceTarget.byId(id) ?? customById[id];
   return {
-    for (final id in order) ?ServiceTarget.byId(id),
+    for (final id in order) ?resolve(id),
     ...ServiceTarget.values,
+    ...customById.values,
   }.toList();
 }
 
@@ -137,23 +231,34 @@ class ServiceCheck {
 }
 
 /// An empty [proxyName] lets the Core route by its rules; an empty [targets]
-/// checks every service.
+/// checks every built-in service.
 Future<Map<ServiceTarget, ServiceCheck>> checkServices(
   CoreController core, {
   String proxyName = '',
   List<ServiceTarget> targets = const [],
   Duration timeout = probeTimeoutDuration,
 }) async {
+  final byId = {for (final target in targets) target.id: target};
   final items = await core.serviceCheck(
     ServiceCheckParams(
       proxyName: proxyName,
-      names: targets.map((target) => target.id).toList(),
+      names: [
+        for (final target in targets)
+          if (target is BuiltinServiceTarget) target.id,
+      ],
+      custom: [
+        for (final target in targets)
+          if (target case CustomServiceTarget(:final id, :final customUrl))
+            CustomServiceCheck(name: id, url: customUrl),
+      ],
       timeout: timeout.inMilliseconds,
     ),
   );
   return {
     for (final item in items)
-      ?ServiceTarget.byId(item.name): ServiceCheck.of(item),
+      ?(byId[item.name] ?? ServiceTarget.byId(item.name)): ServiceCheck.of(
+        item,
+      ),
   };
 }
 

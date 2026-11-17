@@ -235,6 +235,18 @@ abstract class Filter with _$Filter {
 }
 
 @freezed
+abstract class CustomService with _$CustomService {
+  const factory CustomService({
+    required String id,
+    required String label,
+    required String url,
+  }) = _CustomService;
+
+  factory CustomService.fromJson(Map<String, Object?> json) =>
+      _$CustomServiceFromJson(json);
+}
+
+@freezed
 abstract class AppSettingProps with _$AppSettingProps {
   const factory AppSettingProps({
     String? locale,
@@ -275,6 +287,7 @@ abstract class AppSettingProps with _$AppSettingProps {
     @Default(EditorFontSize.standard) EditorFontSize editorFontSize,
     @Default([]) List<String> serviceOrder,
     @Default([]) List<String> disabledServices,
+    @Default([]) List<CustomService> customServices,
     @Default({}) Map<String, Map<String, double>> tableColumnWidths,
     @Default({}) Map<String, String> recordGroupings,
   }) = _AppSettingProps;

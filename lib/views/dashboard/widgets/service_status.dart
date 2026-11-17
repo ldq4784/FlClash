@@ -555,6 +555,22 @@ class _ServiceBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
+    final iconColor =
+        ink ??
+        (enabled
+            ? colorScheme.onSurfaceVariant
+            : colorScheme.onSurfaceVariant.opacity38);
+    final iconSize = size * _glyphShare;
+    final icon = switch (target.icon) {
+      final name? => SvgPicture.asset(
+        'assets/images/services/$name.svg',
+        width: iconSize,
+        height: iconSize,
+        excludeFromSemantics: true,
+        theme: SvgTheme(currentColor: iconColor),
+      ),
+      null => GlyphIcon(AppGlyphs.proxies, size: iconSize, color: iconColor),
+    };
     return CustomPaint(
       size: Size.square(size),
       painter: _BadgePainter(
@@ -566,21 +582,7 @@ class _ServiceBadge extends StatelessWidget {
       ),
       child: SizedBox.square(
         dimension: size,
-        child: Center(
-          child: SvgPicture.asset(
-            'assets/images/services/${target.icon}.svg',
-            width: size * _glyphShare,
-            height: size * _glyphShare,
-            excludeFromSemantics: true,
-            theme: SvgTheme(
-              currentColor:
-                  ink ??
-                  (enabled
-                      ? colorScheme.onSurfaceVariant
-                      : colorScheme.onSurfaceVariant.opacity38),
-            ),
-          ),
-        ),
+        child: Center(child: icon),
       ),
     );
   }
@@ -705,8 +707,80 @@ class ServiceStatusSheet extends ConsumerWidget {
 class ServiceManageView extends ConsumerWidget {
   const ServiceManageView({super.key});
 
+  Future<void> _editCustomService(
+    BuildContext context,
+    WidgetRef ref, {
+    CustomServiceTarget? current,
+  }) async {
+    final localizations = context.appLocalizations;
+    final res = await showNamedUrlForm(
+      context,
+      title: current == null ? localizations.add : localizations.edit,
+      label: current?.label ?? '',
+      url: current?.customUrl ?? '',
+      urlValidator: (value) {
+        final url = value?.trim() ?? '';
+        if (url.isEmpty) {
+          return localizations.emptyTip(localizations.url);
+        }
+        final uri = url.webUri;
+        if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https')) {
+          return localizations.urlTip(localizations.url);
+        }
+        return null;
+      },
+    );
+    if (res == null || !context.mounted) return;
+    final next = CustomService(
+      id: current?.id ?? 'custom:${snowflake.id}',
+      label: customServiceLabel(res.label, res.url),
+      url: res.url,
+    );
+    ref.read(appSettingProvider.notifier).update((state) {
+      final customServices = current == null
+          ? [...state.customServices, next]
+          : [
+              for (final item in state.customServices)
+                item.id == current.id ? next : item,
+            ];
+      return state.copyWith(customServices: customServices);
+    });
+  }
+
+  Future<void> _deleteCustomService(
+    BuildContext context,
+    WidgetRef ref,
+    CustomServiceTarget target,
+  ) async {
+    final localizations = context.appLocalizations;
+    final res = await dialogs.showMessage(
+      title: localizations.tip,
+      message: TextSpan(text: localizations.deleteTip(target.label)),
+      destructive: true,
+      confirmText: localizations.delete,
+    );
+    if (res != true || !context.mounted) return;
+    ref.read(appSettingProvider.notifier).update((state) {
+      return state.copyWith(
+        customServices: [
+          for (final item in state.customServices)
+            if (item.id != target.id) item,
+        ],
+        serviceOrder: [
+          for (final id in state.serviceOrder)
+            if (id != target.id) id,
+        ],
+        disabledServices: [
+          for (final id in state.disabledServices)
+            if (id != target.id) id,
+        ],
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final localizations = context.appLocalizations;
     final targets = ref.watch(serviceTargetsProvider);
     final enabled = ref.watch(enabledServiceTargetsProvider);
     final settings = ref.read(appSettingProvider.notifier);
@@ -740,19 +814,48 @@ class ServiceManageView extends ConsumerWidget {
       final target = targets[index];
       final isEnabled = enabled.contains(target);
       final locked = isEnabled && enabled.length == 1;
-      return _ServiceManageItem(
-        key: ValueKey(target),
-        target: target,
+      final custom = target is CustomServiceTarget ? target : null;
+      return SortableItem(
+        key: ValueKey(target.id),
         index: index,
-        position: ItemPosition.get(index, targets.length),
-        enabled: isEnabled,
-        shown: shown.contains(target),
-        onChanged: locked ? null : (value) => toggle(target, value),
+        child: ContextMenuRegion(
+          menuItems: custom == null
+              ? null
+              : [
+                  PopupMenuItem(
+                    glyph: AppGlyphs.edit,
+                    label: localizations.edit,
+                    onPressed: () =>
+                        _editCustomService(context, ref, current: custom),
+                  ),
+                  PopupMenuItem(
+                    danger: true,
+                    glyph: AppGlyphs.delete,
+                    label: localizations.delete,
+                    onPressed: () => _deleteCustomService(context, ref, custom),
+                  ),
+                ],
+          child: _ServiceManageItem(
+            target: target,
+            position: ItemPosition.get(index, targets.length),
+            enabled: isEnabled,
+            shown: shown.contains(target),
+            onChanged: locked ? null : (value) => toggle(target, value),
+          ),
+        ),
       );
     }
 
     return Scaffold(
-      title: context.appLocalizations.serviceManage,
+      title: localizations.serviceManage,
+      canSort: targets.length > 1,
+      iconActions: [
+        IconButtonData(
+          glyph: AppGlyphs.addCircle,
+          tooltip: localizations.add,
+          onPressed: () => _editCustomService(context, ref),
+        ),
+      ],
       body: CustomScrollView(
         shrinkWrap: true,
         slivers: [
@@ -762,8 +865,11 @@ class ServiceManageView extends ConsumerWidget {
           SliverPrismReorderableList(
             itemBuilder: (_, index) => itemAt(index),
             itemCount: targets.length,
-            proxyDecorator: (child, index, animation) =>
-                commonProxyDecorator(itemAt(index), index, animation),
+            proxyDecorator: (child, index, animation) => commonProxyDecorator(
+              SortModeScope(sorting: true, child: itemAt(index)),
+              index,
+              animation,
+            ),
             onReorderItem: reorder,
           ),
           SliverToBoxAdapter(child: SizedBox(height: 16 + context.bottomInset)),
@@ -781,9 +887,7 @@ const _rowBadgeRadius = AppCorner.xl - _rowBadgeInset;
 
 class _ServiceManageItem extends StatelessWidget {
   const _ServiceManageItem({
-    super.key,
     required this.target,
-    required this.index,
     required this.position,
     required this.enabled,
     required this.shown,
@@ -791,7 +895,6 @@ class _ServiceManageItem extends StatelessWidget {
   });
 
   final ServiceTarget target;
-  final int index;
   final ItemPosition position;
   final bool enabled;
   final bool shown;
@@ -800,35 +903,43 @@ class _ServiceManageItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final onChanged = this.onChanged;
-    return ReorderDragStartListener(
-      index: index,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: ItemPositionProvider(
-          position: position,
-          child: DecorationListItem(
-            minVerticalPadding: _rowBadgeInset,
-            contentPadding: const EdgeInsets.only(
-              left: _rowBadgeInset,
-              right: 16,
-            ),
-            onPressed: onChanged == null ? null : () => onChanged(!enabled),
-            leading: _ServiceBadge(
-              target: target,
-              size: _rowBadgeSize,
-              radius: _rowBadgeRadius,
-              enabled: enabled,
-            ),
-            title: Text(
-              target.label,
-              style: enabled
-                  ? null
-                  : TextStyle(color: context.colorScheme.onSurfaceVariant),
-            ),
-            subtitle: shown
-                ? Text(context.appLocalizations.serviceShownOnDashboard)
-                : null,
-            trailing: Switch(value: enabled, onChanged: onChanged),
+    final customUrl = target.customUrl;
+    final subtitle = shown
+        ? Text(context.appLocalizations.serviceShownOnDashboard)
+        : customUrl == null
+        ? null
+        : Text(
+            customUrl,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.listCaptionStyle,
+          );
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: ItemPositionProvider(
+        position: position,
+        child: DecorationListItem(
+          minVerticalPadding: _rowBadgeInset,
+          contentPadding: const EdgeInsets.only(left: _rowBadgeInset),
+          onPressed: onChanged == null ? null : () => onChanged(!enabled),
+          leading: _ServiceBadge(
+            target: target,
+            size: _rowBadgeSize,
+            radius: _rowBadgeRadius,
+            enabled: enabled,
+          ),
+          title: Text(
+            target.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: enabled
+                ? null
+                : TextStyle(color: context.colorScheme.onSurfaceVariant),
+          ),
+          subtitle: subtitle,
+          trailing: Padding(
+            padding: const EdgeInsetsDirectional.only(end: 16),
+            child: Switch(value: enabled, onChanged: onChanged),
           ),
         ),
       ),

@@ -59,7 +59,10 @@ List<ServiceTarget> serviceTargets(Ref ref) {
   final order = ref.watch(
     appSettingProvider.select((state) => SelectValue(state.serviceOrder)),
   );
-  return orderServiceTargets(order.value);
+  final customServices = ref.watch(
+    appSettingProvider.select((state) => SelectValue(state.customServices)),
+  );
+  return orderServiceTargets(order.value, customServices: customServices.value);
 }
 
 @riverpod

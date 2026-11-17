@@ -42,7 +42,10 @@ void main() {
       final params =
           invocation.positionalArguments.single as ServiceCheckParams;
       sweeps.add(params);
-      return [for (final name in params.names) _item(name)];
+      return [
+        for (final name in params.names) _item(name),
+        for (final custom in params.custom) _item(custom.name),
+      ];
     });
   });
 
@@ -319,4 +322,38 @@ void main() {
 
     expect(scope.read(enabledServiceTargetsProvider), ServiceTarget.values);
   });
+
+  test(
+    'watches and enables custom services alongside built-in targets',
+    () async {
+      final scope = container();
+      const custom = CustomService(
+        id: 'custom:1',
+        label: 'Example',
+        url: 'https://example.com',
+      );
+      scope.read(appSettingProvider.notifier).value = const AppSettingProps(
+        customServices: [custom],
+        serviceOrder: ['custom:1'],
+      );
+      const target = CustomServiceTarget(
+        id: 'custom:1',
+        label: 'Example',
+        url: 'https://example.com',
+      );
+      expect(scope.read(enabledServiceTargetsProvider).first, target);
+
+      notifierOf(scope).watch(target);
+      await pumpEventQueue();
+
+      expect(sweeps.single.names, isEmpty);
+      expect(sweeps.single.custom, const [
+        CustomServiceCheck(name: 'custom:1', url: 'https://example.com'),
+      ]);
+      final check = stateOf(scope).valueOf(target);
+      expect(check?.status, ServiceProbeStatus.available);
+      expect(check?.node, 'HK-01');
+      expect(check?.delay, 12);
+    },
+  );
 }

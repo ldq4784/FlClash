@@ -5,6 +5,7 @@ import 'package:fl_clash/common/service_probe.dart';
 import 'package:fl_clash/core/controller.dart';
 import 'package:fl_clash/core/interface.dart';
 import 'package:fl_clash/enum/enum.dart';
+import 'package:fl_clash/features/features.dart';
 import 'package:fl_clash/models/models.dart';
 import 'package:fl_clash/providers/app.dart';
 import 'package:fl_clash/providers/config.dart';
@@ -975,7 +976,50 @@ void main() {
     );
   });
 
-  testWidgets('long pressing a service in the manage page drags it', (
+  testWidgets(
+    'sort mode in the manage page shows handles and drags a service',
+    (tester) async {
+      answer((params) => const []);
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+      await openManage(tester);
+
+      expect(find.byGlyph(AppGlyphs.dragHandle), findsNothing);
+      await tester.tap(find.byTooltip('Sort'));
+      await tester.pumpAndSettle();
+      expect(find.byGlyph(AppGlyphs.dragHandle), findsWidgets);
+
+      final row = find.widgetWithText(
+        DecorationListItem,
+        ServiceTarget.google.label,
+      );
+      final rowHeight = tester.getSize(row).height;
+      final gesture = await tester.startGesture(
+        tester.getCenter(
+          find.descendant(
+            of: row,
+            matching: find.text(ServiceTarget.google.label),
+          ),
+        ),
+      );
+      await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
+      for (var step = 0; step < 4; step++) {
+        await gesture.moveBy(Offset(0, rowHeight * 0.3));
+        await tester.pump();
+      }
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(settingsOf(tester).serviceOrder.take(2), ['github', 'google']);
+    },
+  );
+
+  Finder formField(String title) => find.descendant(
+    of: find.widgetWithText(FormRow, title),
+    matching: find.byType(TextFormField),
+  );
+
+  testWidgets('adds, edits, and deletes custom websites in the manage page', (
     tester,
   ) async {
     answer((params) => const []);
@@ -983,30 +1027,142 @@ void main() {
     await tester.pumpAndSettle();
     await openManage(tester);
 
-    expect(find.byGlyph(AppGlyphs.dragHandle), findsNothing);
-    final row = find.widgetWithText(
-      DecorationListItem,
-      ServiceTarget.google.label,
+    await tester.tap(find.byTooltip('Add'));
+    await tester.pumpAndSettle();
+    expect(find.byType(NamedUrlForm), findsOneWidget);
+
+    await tester.enterText(formField('URL'), 'ftp://bad.example');
+    await tester.tap(find.byTooltip('Submit'));
+    await tester.pumpAndSettle();
+    expect(find.text('URL must be a URL'), findsOneWidget);
+    expect(find.byType(NamedUrlForm), findsOneWidget);
+
+    await tester.enterText(formField('URL'), 'https://example.com/health');
+    await tester.tap(find.byTooltip('Submit'));
+    await tester.pumpAndSettle();
+    expect(find.byType(NamedUrlForm), findsNothing);
+
+    final added = settingsOf(tester).customServices;
+    expect(added, hasLength(1));
+    expect(added.single.label, 'example.com');
+    expect(added.single.url, 'https://example.com/health');
+
+    final scrollable = find.descendant(
+      of: find.byType(ServiceManageView),
+      matching: find.byType(Scrollable),
     );
-    final rowHeight = tester.getSize(row).height;
-    final gesture = await tester.startGesture(
-      tester.getCenter(
-        find.descendant(
-          of: row,
-          matching: find.text(ServiceTarget.google.label),
-        ),
-      ),
-    );
-    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
-    for (var step = 0; step < 4; step++) {
-      await gesture.moveBy(Offset(0, rowHeight * 0.3));
-      await tester.pump();
-    }
-    await gesture.up();
+    final customRow = find.widgetWithText(DecorationListItem, 'example.com');
+    await tester.scrollUntilVisible(customRow, 200, scrollable: scrollable);
     await tester.pumpAndSettle();
 
-    expect(settingsOf(tester).serviceOrder.take(2), ['github', 'google']);
+    await tester.longPress(find.text('example.com'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(formField('Name'), 'My Probe');
+    await tester.enterText(formField('URL'), 'https://probe.example/204');
+    await tester.tap(find.byTooltip('Submit'));
+    await tester.pumpAndSettle();
+
+    final edited = settingsOf(tester).customServices;
+    expect(edited.single.id, added.single.id);
+    expect(edited.single.label, 'My Probe');
+    expect(edited.single.url, 'https://probe.example/204');
+    expect(find.text('My Probe'), findsOneWidget);
+    expect(find.text('https://probe.example/204'), findsOneWidget);
+
+    await tester.longPress(find.text('My Probe'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+    await tester.pumpAndSettle();
+
+    expect(settingsOf(tester).customServices, isEmpty);
+    expect(find.text('My Probe'), findsNothing);
   });
+
+  testWidgets(
+    'checks a custom website latency and outbound IP like built-ins',
+    (tester) async {
+      final asked = <ServiceCheckParams>[];
+      answer((params) {
+        asked.add(params);
+        return [
+          for (final name in params.names)
+            _item(name, ServiceProbeStatus.available, delay: 20),
+          for (final custom in params.custom)
+            _item(
+              custom.name,
+              ServiceProbeStatus.available,
+              delay: 42,
+              chains: const ['JP-01'],
+            ),
+        ];
+      });
+      await tester.pumpWidget(
+        app(
+          outboundIp: (_) => _address('198.51.100.8', 'JP'),
+          settings: const AppSettingProps(
+            customServices: [
+              CustomService(
+                id: 'custom:1',
+                label: 'My Probe',
+                url: 'https://probe.example/204',
+              ),
+            ],
+            serviceOrder: ['custom:1'],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      const customTarget = CustomServiceTarget(
+        id: 'custom:1',
+        label: 'My Probe',
+        url: 'https://probe.example/204',
+      );
+      expect(
+        find.descendant(of: tile(customTarget), matching: find.text('42 ms')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: tile(customTarget),
+          matching: find.byGlyph(AppGlyphs.proxies),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        asked.any(
+          (params) =>
+              params.custom.length == 1 &&
+              params.custom.single ==
+                  const CustomServiceCheck(
+                    name: 'custom:1',
+                    url: 'https://probe.example/204',
+                  ),
+        ),
+        isTrue,
+      );
+
+      await tester.tap(find.byType(ServiceStatusCard));
+      await tester.pumpAndSettle();
+
+      final row = find.widgetWithText(ListRow, 'My Probe');
+      expect(row, findsOneWidget);
+      expect(
+        find.descendant(of: row, matching: find.text('42 ms')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: row, matching: find.text('198.51.100.8')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('a turned off service leaves the tiles to the next one', (
     tester,

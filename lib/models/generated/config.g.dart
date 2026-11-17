@@ -14,6 +14,20 @@ Map<String, dynamic> _$FilterToJson(_Filter instance) => <String, dynamic>{
   'regex': instance.regex,
 };
 
+_CustomService _$CustomServiceFromJson(Map<String, dynamic> json) =>
+    _CustomService(
+      id: json['id'] as String,
+      label: json['label'] as String,
+      url: json['url'] as String,
+    );
+
+Map<String, dynamic> _$CustomServiceToJson(_CustomService instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'label': instance.label,
+      'url': instance.url,
+    };
+
 _AppSettingProps _$AppSettingPropsFromJson(
   Map<String, dynamic> json,
 ) => _AppSettingProps(
@@ -80,6 +94,11 @@ _AppSettingProps _$AppSettingPropsFromJson(
           ?.map((e) => e as String)
           .toList() ??
       const [],
+  customServices:
+      (json['customServices'] as List<dynamic>?)
+          ?.map((e) => CustomService.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const [],
   tableColumnWidths:
       (json['tableColumnWidths'] as Map<String, dynamic>?)?.map(
         (k, e) => MapEntry(
@@ -131,6 +150,7 @@ Map<String, dynamic> _$AppSettingPropsToJson(_AppSettingProps instance) =>
       'editorFontSize': _$EditorFontSizeEnumMap[instance.editorFontSize]!,
       'serviceOrder': instance.serviceOrder,
       'disabledServices': instance.disabledServices,
+      'customServices': instance.customServices,
       'tableColumnWidths': instance.tableColumnWidths,
       'recordGroupings': instance.recordGroupings,
     };

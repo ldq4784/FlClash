@@ -395,10 +395,22 @@ abstract class OutboundIpResult with _$OutboundIpResult {
 }
 
 @freezed
+abstract class CustomServiceCheck with _$CustomServiceCheck {
+  const factory CustomServiceCheck({
+    required String name,
+    required String url,
+  }) = _CustomServiceCheck;
+
+  factory CustomServiceCheck.fromJson(Map<String, Object?> json) =>
+      _$CustomServiceCheckFromJson(json);
+}
+
+@freezed
 abstract class ServiceCheckParams with _$ServiceCheckParams {
   const factory ServiceCheckParams({
     @JsonKey(name: 'proxy-name') @Default('') String proxyName,
     @Default([]) List<String> names,
+    @Default([]) List<CustomServiceCheck> custom,
     required int timeout,
   }) = _ServiceCheckParams;
 

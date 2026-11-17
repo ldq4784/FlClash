@@ -186,7 +186,7 @@ final class ServiceTargetsProvider
   }
 }
 
-String _$serviceTargetsHash() => r'f1c9ae92b6d0c5b7fcf72c90571ff1c67f7ca66e';
+String _$serviceTargetsHash() => r'2ca41a26033df635711a37ae1e51e854818c44e5';
 
 @ProviderFor(enabledServiceTargets)
 final enabledServiceTargetsProvider = EnabledServiceTargetsProvider._();

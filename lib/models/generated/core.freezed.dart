@@ -7262,9 +7262,282 @@ as List<RouteHit>,
 
 
 /// @nodoc
+mixin _$CustomServiceCheck {
+
+ String get name; String get url;
+/// Create a copy of CustomServiceCheck
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CustomServiceCheckCopyWith<CustomServiceCheck> get copyWith => _$CustomServiceCheckCopyWithImpl<CustomServiceCheck>(this as CustomServiceCheck, _$identity);
+
+  /// Serializes this CustomServiceCheck to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as CustomServiceCheck;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CustomServiceCheck&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.url, _this.url) || other.url == _this.url));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as CustomServiceCheck;
+  return Object.hash(runtimeType,_this.name,_this.url);
+}
+
+@override
+String toString() {
+  final _this = this as CustomServiceCheck;
+  return 'CustomServiceCheck(name: ${_this.name}, url: ${_this.url})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CustomServiceCheckCopyWith<$Res>  {
+  factory $CustomServiceCheckCopyWith(CustomServiceCheck value, $Res Function(CustomServiceCheck) _then) = _$CustomServiceCheckCopyWithImpl;
+@useResult
+$Res call({
+ String name, String url
+});
+
+
+
+
+}
+/// @nodoc
+class _$CustomServiceCheckCopyWithImpl<$Res>
+    implements $CustomServiceCheckCopyWith<$Res> {
+  _$CustomServiceCheckCopyWithImpl(this._self, this._then);
+
+  final CustomServiceCheck _self;
+  final $Res Function(CustomServiceCheck) _then;
+
+/// Create a copy of CustomServiceCheck
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? url = null,}) {
+  return _then(CustomServiceCheck(
+name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,url: null == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [CustomServiceCheck].
+extension CustomServiceCheckPatterns on CustomServiceCheck {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _CustomServiceCheck value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _CustomServiceCheck() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _CustomServiceCheck value)  $default,){
+final _that = this;
+switch (_that) {
+case _CustomServiceCheck():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _CustomServiceCheck value)?  $default,){
+final _that = this;
+switch (_that) {
+case _CustomServiceCheck() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  String url)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _CustomServiceCheck() when $default != null:
+return $default(_that.name,_that.url);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  String url)  $default,) {final _that = this;
+switch (_that) {
+case _CustomServiceCheck():
+return $default(_that.name,_that.url);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  String url)?  $default,) {final _that = this;
+switch (_that) {
+case _CustomServiceCheck() when $default != null:
+return $default(_that.name,_that.url);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _CustomServiceCheck implements CustomServiceCheck {
+  const _CustomServiceCheck({required this.name, required this.url});
+  factory _CustomServiceCheck.fromJson(Map<String, dynamic> json) => _$CustomServiceCheckFromJson(json);
+
+@override final  String name;
+@override final  String url;
+
+/// Create a copy of CustomServiceCheck
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$CustomServiceCheckCopyWith<_CustomServiceCheck> get copyWith => __$CustomServiceCheckCopyWithImpl<_CustomServiceCheck>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$CustomServiceCheckToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CustomServiceCheck&&(identical(other.name, name) || other.name == name)&&(identical(other.url, url) || other.url == url));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,name,url);
+}
+
+@override
+String toString() {
+    return 'CustomServiceCheck(name: $name, url: $url)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$CustomServiceCheckCopyWith<$Res> implements $CustomServiceCheckCopyWith<$Res> {
+  factory _$CustomServiceCheckCopyWith(_CustomServiceCheck value, $Res Function(_CustomServiceCheck) _then) = __$CustomServiceCheckCopyWithImpl;
+@override @useResult
+$Res call({
+ String name, String url
+});
+
+
+
+
+}
+/// @nodoc
+class __$CustomServiceCheckCopyWithImpl<$Res>
+    implements _$CustomServiceCheckCopyWith<$Res> {
+  __$CustomServiceCheckCopyWithImpl(this._self, this._then);
+
+  final _CustomServiceCheck _self;
+  final $Res Function(_CustomServiceCheck) _then;
+
+/// Create a copy of CustomServiceCheck
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? url = null,}) {
+  return _then(_CustomServiceCheck(
+name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,url: null == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
 mixin _$ServiceCheckParams {
 
-@JsonKey(name: 'proxy-name') String get proxyName; List<String> get names; int get timeout;
+@JsonKey(name: 'proxy-name') String get proxyName; List<String> get names; List<CustomServiceCheck> get custom; int get timeout;
 /// Create a copy of ServiceCheckParams
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -7278,20 +7551,20 @@ $ServiceCheckParamsCopyWith<ServiceCheckParams> get copyWith => _$ServiceCheckPa
 @override
 bool operator ==(Object other) {
   final _this = this as ServiceCheckParams;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ServiceCheckParams&&(identical(other.proxyName, _this.proxyName) || other.proxyName == _this.proxyName)&&const DeepCollectionEquality().equals(other.names, _this.names)&&(identical(other.timeout, _this.timeout) || other.timeout == _this.timeout));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ServiceCheckParams&&(identical(other.proxyName, _this.proxyName) || other.proxyName == _this.proxyName)&&const DeepCollectionEquality().equals(other.names, _this.names)&&const DeepCollectionEquality().equals(other.custom, _this.custom)&&(identical(other.timeout, _this.timeout) || other.timeout == _this.timeout));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as ServiceCheckParams;
-  return Object.hash(runtimeType,_this.proxyName,const DeepCollectionEquality().hash(_this.names),_this.timeout);
+  return Object.hash(runtimeType,_this.proxyName,const DeepCollectionEquality().hash(_this.names),const DeepCollectionEquality().hash(_this.custom),_this.timeout);
 }
 
 @override
 String toString() {
   final _this = this as ServiceCheckParams;
-  return 'ServiceCheckParams(proxyName: ${_this.proxyName}, names: ${_this.names}, timeout: ${_this.timeout})';
+  return 'ServiceCheckParams(proxyName: ${_this.proxyName}, names: ${_this.names}, custom: ${_this.custom}, timeout: ${_this.timeout})';
 }
 
 
@@ -7302,7 +7575,7 @@ abstract mixin class $ServiceCheckParamsCopyWith<$Res>  {
   factory $ServiceCheckParamsCopyWith(ServiceCheckParams value, $Res Function(ServiceCheckParams) _then) = _$ServiceCheckParamsCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: 'proxy-name') String proxyName, List<String> names, int timeout
+@JsonKey(name: 'proxy-name') String proxyName, List<String> names, List<CustomServiceCheck> custom, int timeout
 });
 
 
@@ -7319,11 +7592,12 @@ class _$ServiceCheckParamsCopyWithImpl<$Res>
 
 /// Create a copy of ServiceCheckParams
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? proxyName = null,Object? names = null,Object? timeout = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? proxyName = null,Object? names = null,Object? custom = null,Object? timeout = null,}) {
   return _then(ServiceCheckParams(
 proxyName: null == proxyName ? _self.proxyName : proxyName // ignore: cast_nullable_to_non_nullable
 as String,names: null == names ? _self.names : names // ignore: cast_nullable_to_non_nullable
-as List<String>,timeout: null == timeout ? _self.timeout : timeout // ignore: cast_nullable_to_non_nullable
+as List<String>,custom: null == custom ? _self.custom : custom // ignore: cast_nullable_to_non_nullable
+as List<CustomServiceCheck>,timeout: null == timeout ? _self.timeout : timeout // ignore: cast_nullable_to_non_nullable
 as int,
   ));
 }
@@ -7409,10 +7683,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'proxy-name')  String proxyName,  List<String> names,  int timeout)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'proxy-name')  String proxyName,  List<String> names,  List<CustomServiceCheck> custom,  int timeout)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ServiceCheckParams() when $default != null:
-return $default(_that.proxyName,_that.names,_that.timeout);case _:
+return $default(_that.proxyName,_that.names,_that.custom,_that.timeout);case _:
   return orElse();
 
 }
@@ -7430,10 +7704,10 @@ return $default(_that.proxyName,_that.names,_that.timeout);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'proxy-name')  String proxyName,  List<String> names,  int timeout)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'proxy-name')  String proxyName,  List<String> names,  List<CustomServiceCheck> custom,  int timeout)  $default,) {final _that = this;
 switch (_that) {
 case _ServiceCheckParams():
-return $default(_that.proxyName,_that.names,_that.timeout);case _:
+return $default(_that.proxyName,_that.names,_that.custom,_that.timeout);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -7450,10 +7724,10 @@ return $default(_that.proxyName,_that.names,_that.timeout);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'proxy-name')  String proxyName,  List<String> names,  int timeout)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'proxy-name')  String proxyName,  List<String> names,  List<CustomServiceCheck> custom,  int timeout)?  $default,) {final _that = this;
 switch (_that) {
 case _ServiceCheckParams() when $default != null:
-return $default(_that.proxyName,_that.names,_that.timeout);case _:
+return $default(_that.proxyName,_that.names,_that.custom,_that.timeout);case _:
   return null;
 
 }
@@ -7465,7 +7739,7 @@ return $default(_that.proxyName,_that.names,_that.timeout);case _:
 @JsonSerializable()
 
 class _ServiceCheckParams implements ServiceCheckParams {
-  const _ServiceCheckParams({@JsonKey(name: 'proxy-name') this.proxyName = '',  List<String> names = const [], required this.timeout}): _names = names;
+  const _ServiceCheckParams({@JsonKey(name: 'proxy-name') this.proxyName = '',  List<String> names = const [],  List<CustomServiceCheck> custom = const [], required this.timeout}): _names = names,_custom = custom;
   factory _ServiceCheckParams.fromJson(Map<String, dynamic> json) => _$ServiceCheckParamsFromJson(json);
 
 @override@JsonKey(name: 'proxy-name') final  String proxyName;
@@ -7474,6 +7748,13 @@ class _ServiceCheckParams implements ServiceCheckParams {
   if (_names is EqualUnmodifiableListView) return _names;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_names);
+}
+
+ final  List<CustomServiceCheck> _custom;
+@override@JsonKey() List<CustomServiceCheck> get custom {
+  if (_custom is EqualUnmodifiableListView) return _custom;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_custom);
 }
 
 @override final  int timeout;
@@ -7491,18 +7772,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ServiceCheckParams&&(identical(other.proxyName, proxyName) || other.proxyName == proxyName)&&const DeepCollectionEquality().equals(other.names, _names)&&(identical(other.timeout, timeout) || other.timeout == timeout));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ServiceCheckParams&&(identical(other.proxyName, proxyName) || other.proxyName == proxyName)&&const DeepCollectionEquality().equals(other.names, _names)&&const DeepCollectionEquality().equals(other.custom, _custom)&&(identical(other.timeout, timeout) || other.timeout == timeout));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,proxyName,const DeepCollectionEquality().hash(_names),timeout);
+    return Object.hash(runtimeType,proxyName,const DeepCollectionEquality().hash(_names),const DeepCollectionEquality().hash(_custom),timeout);
 }
 
 @override
 String toString() {
-    return 'ServiceCheckParams(proxyName: $proxyName, names: $names, timeout: $timeout)';
+    return 'ServiceCheckParams(proxyName: $proxyName, names: $names, custom: $custom, timeout: $timeout)';
 }
 
 
@@ -7513,7 +7794,7 @@ abstract mixin class _$ServiceCheckParamsCopyWith<$Res> implements $ServiceCheck
   factory _$ServiceCheckParamsCopyWith(_ServiceCheckParams value, $Res Function(_ServiceCheckParams) _then) = __$ServiceCheckParamsCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: 'proxy-name') String proxyName, List<String> names, int timeout
+@JsonKey(name: 'proxy-name') String proxyName, List<String> names, List<CustomServiceCheck> custom, int timeout
 });
 
 
@@ -7530,11 +7811,12 @@ class __$ServiceCheckParamsCopyWithImpl<$Res>
 
 /// Create a copy of ServiceCheckParams
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? proxyName = null,Object? names = null,Object? timeout = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? proxyName = null,Object? names = null,Object? custom = null,Object? timeout = null,}) {
   return _then(_ServiceCheckParams(
 proxyName: null == proxyName ? _self.proxyName : proxyName // ignore: cast_nullable_to_non_nullable
 as String,names: null == names ? _self._names : names // ignore: cast_nullable_to_non_nullable
-as List<String>,timeout: null == timeout ? _self.timeout : timeout // ignore: cast_nullable_to_non_nullable
+as List<String>,custom: null == custom ? _self._custom : custom // ignore: cast_nullable_to_non_nullable
+as List<CustomServiceCheck>,timeout: null == timeout ? _self.timeout : timeout // ignore: cast_nullable_to_non_nullable
 as int,
   ));
 }

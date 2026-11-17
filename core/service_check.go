@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -40,11 +41,17 @@ const (
 	serviceFailed            = "failed"
 )
 
-// An empty Names runs every check.
+type CustomServiceCheck struct {
+	Name string `json:"name"`
+	Url  string `json:"url"`
+}
+
+// An empty Names and Custom runs every check.
 type ServiceCheckParams struct {
-	ProxyName string   `json:"proxy-name"`
-	Names     []string `json:"names"`
-	Timeout   int64    `json:"timeout"`
+	ProxyName string               `json:"proxy-name"`
+	Names     []string             `json:"names"`
+	Custom    []CustomServiceCheck `json:"custom,omitempty"`
+	Timeout   int64                `json:"timeout"`
 }
 
 // runServiceCheck stamps Name; a blank Status means a rule has yet to judge it.
@@ -116,7 +123,7 @@ var serviceCheckers = []serviceChecker{
 }
 
 func handleServiceCheck(params *ServiceCheckParams) []ServiceCheckItem {
-	wanted := selectedCheckers(params.Names)
+	wanted := selectedCheckers(params)
 	items := make([]ServiceCheckItem, len(wanted))
 	if len(wanted) == 0 {
 		return items
@@ -219,12 +226,12 @@ func hasBudget(ctx context.Context, timeout time.Duration) bool {
 	return !ok || time.Until(deadline) >= timeout
 }
 
-func selectedCheckers(names []string) []serviceChecker {
-	if len(names) == 0 {
+func selectedCheckers(params *ServiceCheckParams) []serviceChecker {
+	if len(params.Names) == 0 && len(params.Custom) == 0 {
 		return serviceCheckers
 	}
-	wanted := make([]serviceChecker, 0, len(names))
-	for _, name := range names {
+	wanted := make([]serviceChecker, 0, len(params.Names)+len(params.Custom))
+	for _, name := range params.Names {
 		for _, checker := range serviceCheckers {
 			if checker.name == name {
 				wanted = append(wanted, checker)
@@ -232,7 +239,26 @@ func selectedCheckers(names []string) []serviceChecker {
 			}
 		}
 	}
+	for _, custom := range params.Custom {
+		if custom.Name == "" {
+			continue
+		}
+		wanted = append(wanted, serviceChecker{
+			name:  custom.Name,
+			check: checkCustomUrl(custom.Url),
+		})
+	}
 	return wanted
+}
+
+func checkCustomUrl(rawUrl string) func(serviceEnv) ServiceCheckItem {
+	parsed, err := url.Parse(rawUrl)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+		return func(serviceEnv) ServiceCheckItem {
+			return ServiceCheckItem{Status: serviceFailed}
+		}
+	}
+	return checkReachable(rawUrl)
 }
 
 // checkReachable is the rule for a target with no unlock semantics of its own.

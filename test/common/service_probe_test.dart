@@ -68,6 +68,42 @@ void main() {
             target,
       ]);
     });
+
+    test('includes custom targets in saved order and falls back to host', () {
+      const customA = CustomService(
+        id: 'custom:1',
+        label: 'My Site',
+        url: 'https://a.example/health',
+      );
+      const customB = CustomService(
+        id: 'custom:2',
+        label: '',
+        url: 'https://b.example/204',
+      );
+
+      final ordered = orderServiceTargets(
+        const ['custom:2', 'google'],
+        customServices: const [customA, customB],
+      );
+
+      expect(
+        ordered.first,
+        const CustomServiceTarget(
+          id: 'custom:2',
+          label: 'b.example',
+          url: 'https://b.example/204',
+        ),
+      );
+      expect(ordered[1], ServiceTarget.google);
+      expect(
+        ordered.last,
+        const CustomServiceTarget(
+          id: 'custom:1',
+          label: 'My Site',
+          url: 'https://a.example/health',
+        ),
+      );
+    });
   });
 
   group('ServiceCheck.of', () {
@@ -172,6 +208,36 @@ void main() {
       final checks = await checkServices(controller);
 
       expect(checks.keys, [ServiceTarget.spotify]);
+    });
+
+    test('sends custom targets via custom and maps results back', () async {
+      const custom = CustomServiceTarget(
+        id: 'custom:1',
+        label: 'Site',
+        url: 'https://site.example/ping',
+      );
+      late ServiceCheckParams sent;
+      when(() => core.serviceCheck(any())).thenAnswer((invocation) async {
+        sent = invocation.positionalArguments.single as ServiceCheckParams;
+        return const [
+          ServiceCheckItem(
+            name: 'custom:1',
+            status: 'available',
+            delay: 55,
+            chains: ['US-01'],
+          ),
+        ];
+      });
+
+      final checks = await checkServices(controller, targets: const [custom]);
+
+      expect(sent.names, isEmpty);
+      expect(sent.custom, const [
+        CustomServiceCheck(name: 'custom:1', url: 'https://site.example/ping'),
+      ]);
+      expect(checks[custom]?.status, ServiceProbeStatus.available);
+      expect(checks[custom]?.delay, 55);
+      expect(checks[custom]?.node, 'US-01');
     });
   });
 

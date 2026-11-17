@@ -414,3 +414,30 @@ func TestTraceValue(t *testing.T) {
 		t.Errorf("colo = %q, want empty", got)
 	}
 }
+
+func TestHandleServiceCheckRunsCustomTargetsOnlyWhenRequested(t *testing.T) {
+	withServiceCheckers(t, stubChecker("alpha", ServiceCheckItem{Status: serviceAvailable}))
+
+	items := handleServiceCheck(&ServiceCheckParams{
+		Custom: []CustomServiceCheck{
+			{Name: "custom:bad", Url: "ftp://example.com"},
+			{Name: "", Url: "https://example.com"},
+		},
+		Timeout: 1000,
+	})
+
+	if len(items) != 1 {
+		t.Fatalf("items = %d, want 1", len(items))
+	}
+	if items[0].Name != "custom:bad" || items[0].Status != serviceFailed {
+		t.Errorf("items[0] = %+v, want failed custom:bad", items[0])
+	}
+
+	wanted := selectedCheckers(&ServiceCheckParams{
+		Names:  []string{"alpha"},
+		Custom: []CustomServiceCheck{{Name: "custom:1", Url: "https://example.com"}},
+	})
+	if len(wanted) != 2 || wanted[0].name != "alpha" || wanted[1].name != "custom:1" {
+		t.Errorf("selected = %+v, want alpha then custom:1", wanted)
+	}
+}

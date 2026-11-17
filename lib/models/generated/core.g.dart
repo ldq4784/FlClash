@@ -543,11 +543,27 @@ Map<String, dynamic> _$OutboundIpResultToJson(_OutboundIpResult instance) =>
       'node-hits': instance.nodeHits,
     };
 
+_CustomServiceCheck _$CustomServiceCheckFromJson(Map<String, dynamic> json) =>
+    _CustomServiceCheck(
+      name: json['name'] as String,
+      url: json['url'] as String,
+    );
+
+Map<String, dynamic> _$CustomServiceCheckToJson(_CustomServiceCheck instance) =>
+    <String, dynamic>{'name': instance.name, 'url': instance.url};
+
 _ServiceCheckParams _$ServiceCheckParamsFromJson(Map<String, dynamic> json) =>
     _ServiceCheckParams(
       proxyName: json['proxy-name'] as String? ?? '',
       names:
           (json['names'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+          const [],
+      custom:
+          (json['custom'] as List<dynamic>?)
+              ?.map(
+                (e) => CustomServiceCheck.fromJson(e as Map<String, dynamic>),
+              )
+              .toList() ??
           const [],
       timeout: (json['timeout'] as num).toInt(),
     );
@@ -556,6 +572,7 @@ Map<String, dynamic> _$ServiceCheckParamsToJson(_ServiceCheckParams instance) =>
     <String, dynamic>{
       'proxy-name': instance.proxyName,
       'names': instance.names,
+      'custom': instance.custom,
       'timeout': instance.timeout,
     };
 
