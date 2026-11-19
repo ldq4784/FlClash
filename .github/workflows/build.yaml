@@ -312,20 +312,67 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Prepare Release Info
         id: release_info
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            tag="${{ github.ref_name }}"
-            name="${{ github.ref_name }}"
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            tag="$GITHUB_REF_NAME"
+            name="$GITHUB_REF_NAME"
           else
-            tag="v0.9.4-build.${{ github.run_number }}"
-            name="Release v0.9.4-build.${{ github.run_number }}"
+            tag="v0.9.4-build.${GITHUB_RUN_NUMBER}"
+            name="Release v0.9.4-build.${GITHUB_RUN_NUMBER}"
           fi
-          echo "tag=$tag" >> $GITHUB_OUTPUT
-          echo "name=$name" >> $GITHUB_OUTPUT
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+          prev_tag=$(
+            gh release list --repo "$GITHUB_REPOSITORY" --limit 20 --json tagName,isDraft \
+              --jq "[.[] | select(.isDraft == false and .tagName != \"$tag\")] | .[0].tagName // empty" \
+              2>/dev/null || true
+          )
+          if [[ -n "$prev_tag" ]] && ! git rev-parse -q --verify "refs/tags/${prev_tag}" >/dev/null; then
+            git fetch --tags --force origin || true
+          fi
+          if [[ -z "$prev_tag" ]] || ! git rev-parse -q --verify "refs/tags/${prev_tag}" >/dev/null; then
+            prev_tag=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)
+          fi
+
+          manual_notes=""
+          if [[ -f RELEASE_NOTES.md ]]; then
+            manual_notes=$(python3 -c 'import pathlib, re; text = pathlib.Path("RELEASE_NOTES.md").read_text(encoding="utf-8"); print(re.sub(r"<!--.*?-->", "", text, flags=re.S).strip(), end="")')
+          fi
+
+          {
+            if [[ -n "$manual_notes" ]]; then
+              printf '%s\n' "$manual_notes"
+            else
+              if [[ -n "$prev_tag" ]]; then
+                commits=$(git log "${prev_tag}..HEAD" --format='- %s (`%h`)')
+              else
+                commits=$(git log -n 20 --format='- %s (`%h`)')
+              fi
+
+              if [[ -n "$commits" ]]; then
+                printf '%s\n' "$commits"
+              elif [[ -n "$prev_tag" ]]; then
+                printf 'No new commits since %s.\n' "$prev_tag"
+              else
+                printf 'No commits found.\n'
+              fi
+            fi
+
+            if [[ -n "$prev_tag" ]]; then
+              printf '\n**Full Changelog**: %s/%s/compare/%s...%s\n' \
+                "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$prev_tag" "$tag"
+            fi
+          } > release_notes.md
+          cat release_notes.md
 
       - name: Download Artifacts
         uses: actions/download-artifact@v4
@@ -359,6 +406,6 @@ jobs:
           files: ./dist/*
           tag_name: ${{ steps.release_info.outputs.tag }}
           name: ${{ steps.release_info.outputs.name }}
-          generate_release_notes: true
+          body_path: release_notes.md
           draft: false
           prerelease: false

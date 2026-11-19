@@ -304,6 +304,64 @@ void main() {
     });
   });
 
+  group('parseReleaseNotes', () {
+    test('extracts headings, paragraphs, and bullets with spacing', () {
+      const body =
+          '### 本次更新\n'
+          '\n'
+          '支持手动编写更新介绍。\n'
+          '支持换行显示。\n'
+          '\n'
+          '- 新增功能 A\n'
+          '* 修复问题 B\n'
+          '\n'
+          '**Full Changelog**: https://github.com/example/repo/compare/v1...v2\n';
+
+      final blocks = parseReleaseNotes(body);
+      expect(blocks.map((b) => (b.kind, b.text, b.hasGapBefore)).toList(), [
+        (ReleaseNoteKind.heading, '本次更新', false),
+        (ReleaseNoteKind.paragraph, '支持手动编写更新介绍。', false),
+        (ReleaseNoteKind.paragraph, '支持换行显示。', false),
+        (ReleaseNoteKind.bullet, '新增功能 A', true),
+        (ReleaseNoteKind.bullet, '修复问题 B', false),
+      ]);
+    });
+
+    test('strips html comments, tables, and respects scope markers', () {
+      const body =
+          '<!-- comment -->\n'
+          '$releaseNotesBeginMarker\n'
+          '手动说明段落\n'
+          '$releaseNotesEndMarker\n'
+          '<table><tr><td>APK</td></tr></table>\n'
+          'Outside note\n';
+
+      final blocks = parseReleaseNotes(body);
+      expect(blocks.map((b) => (b.kind, b.text)).toList(), [
+        (ReleaseNoteKind.paragraph, '手动说明段落'),
+      ]);
+    });
+
+    test('filters download template html and dividers when unscoped', () {
+      const body =
+          '<div align=center>\n'
+          '[![Downloads](https://img.shields.io/badge/a-b.svg)](https://example.com)\n'
+          '</div>\n'
+          '---\n'
+          '<table><tr><td>Windows</td></tr></table>\n'
+          '> 重要说明\n';
+
+      final blocks = parseReleaseNotes(body);
+      expect(blocks.map((b) => (b.kind, b.text)).toList(), [
+        (ReleaseNoteKind.paragraph, '重要说明'),
+      ]);
+    });
+
+    test('returns empty for null', () {
+      expect(parseReleaseNotes(null), isEmpty);
+    });
+  });
+
   group('generateRandomString', () {
     test('respects the requested length bounds', () {
       for (var attempt = 0; attempt < 20; attempt++) {

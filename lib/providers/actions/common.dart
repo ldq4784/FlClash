@@ -106,22 +106,96 @@ class CommonAction extends _$CommonAction {
     return res != null;
   }
 
+  static final _inlineMarkdownPattern = RegExp(
+    r'\[([^\]\n]+)\]\((?:https?:\/\/|mailto:)[^)\s]+\)'
+    r'|\*\*([^*\n]+)\*\*'
+    r'|`([^`\n]+)`',
+  );
+
   TextSpan _releaseSpan(BuildContext context, String tagName, String? body) {
     final version = parseReleaseChangelog(body);
     return TextSpan(
       text: '$tagName \n',
       style: AppTextStyle.title2.of(context),
       children: version == null
-          ? [
-              TextSpan(text: '\n', style: AppTextStyle.subheadline.of(context)),
-              for (final submit in parseReleaseBody(body))
-                TextSpan(
-                  text: '- $submit \n',
-                  style: AppTextStyle.subheadline.of(context),
-                ),
-            ]
+          ? _releaseBodySpans(context, body)
           : _changelogSpans(context, version),
     );
+  }
+
+  List<TextSpan> _releaseBodySpans(BuildContext context, String? body) {
+    final blocks = parseReleaseNotes(body);
+    if (blocks.isEmpty) {
+      return const [];
+    }
+    final subheadline = AppTextStyle.subheadline.of(context);
+    final strongSubheadline = AppTextStyle.subheadline.of(
+      context,
+      emphasized: true,
+    );
+    final headingStyle = strongSubheadline.copyWith(
+      color: context.colorScheme.primary,
+    );
+    final spans = <TextSpan>[
+      if (blocks.first.kind != ReleaseNoteKind.heading)
+        TextSpan(text: '\n', style: subheadline),
+    ];
+    for (final block in blocks) {
+      if (block.kind == ReleaseNoteKind.heading) {
+        spans.addAll([
+          TextSpan(text: '\n', style: headingStyle),
+          ..._inlineMarkdownSpans(
+            block.text,
+            headingStyle,
+            emphasizedStyle: headingStyle,
+          ),
+          TextSpan(text: '\n', style: headingStyle),
+        ]);
+        continue;
+      }
+      if (block.hasGapBefore) {
+        spans.add(TextSpan(text: '\n', style: subheadline));
+      }
+      final prefix = block.kind == ReleaseNoteKind.bullet ? '- ' : '';
+      spans.addAll([
+        if (prefix.isNotEmpty) TextSpan(text: prefix, style: subheadline),
+        ..._inlineMarkdownSpans(
+          block.text,
+          subheadline,
+          emphasizedStyle: strongSubheadline,
+        ),
+        TextSpan(text: '\n', style: subheadline),
+      ]);
+    }
+    return spans;
+  }
+
+  List<TextSpan> _inlineMarkdownSpans(
+    String text,
+    TextStyle baseStyle, {
+    required TextStyle emphasizedStyle,
+  }) {
+    final spans = <TextSpan>[];
+    var offset = 0;
+    for (final match in _inlineMarkdownPattern.allMatches(text)) {
+      if (match.start > offset) {
+        spans.add(
+          TextSpan(text: text.substring(offset, match.start), style: baseStyle),
+        );
+      }
+      if (match.group(2) case final bold?) {
+        spans.add(TextSpan(text: bold, style: emphasizedStyle));
+      } else {
+        spans.add(
+          TextSpan(text: match.group(1) ?? match.group(3)!, style: baseStyle),
+        );
+      }
+      offset = match.end;
+    }
+    if (offset < text.length) {
+      spans.add(TextSpan(text: text.substring(offset), style: baseStyle));
+    }
+    return spans;
   }
 
   List<TextSpan> _changelogSpans(

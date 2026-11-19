@@ -159,6 +159,30 @@ void main() {
     await shown;
   });
 
+  testWidgets('renders manual headings, paragraphs, and inline markdown', (
+    tester,
+  ) async {
+    const manualBody =
+        '### 更新亮点\n\n'
+        '本次更新支持 **手动编写** 更新说明，详见 [发布页](https://github.com/example/repo)。\n\n'
+        '- 修复 `Windows` 图标问题\n\n'
+        '**Full Changelog**: https://github.com/example/repo/compare/v1...v2\n';
+    final container = await pumpApp(tester);
+
+    final shown = container
+        .read(commonActionProvider.notifier)
+        .checkUpdateResultHandle(data: release(manualBody));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('更新亮点'), findsOneWidget);
+    expect(find.textContaining('本次更新支持 手动编写 更新说明，详见 发布页。'), findsOneWidget);
+    expect(find.textContaining('- 修复 Windows 图标问题'), findsOneWidget);
+    expect(find.textContaining('Full Changelog'), findsNothing);
+
+    await tapCancel(tester);
+    await shown;
+  });
+
   testWidgets('stops reminding when an automatic check is dismissed', (
     tester,
   ) async {
