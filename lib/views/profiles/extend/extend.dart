@@ -2,8 +2,6 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 import 'package:fl_clash/common/common.dart';
-import 'package:fl_clash/enum/enum.dart';
-import 'package:fl_clash/l10n/l10n.dart';
 import 'package:fl_clash/providers/providers.dart';
 import 'package:fl_clash/state.dart';
 import 'package:fl_clash/widgets/widgets.dart';
@@ -12,8 +10,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fl_clash/views/config/merges.dart';
 
+import 'added_rules.dart';
 import 'script.dart';
-import 'standard.dart';
 
 /// Long enough that a quick apply still reads as one, not as a flicker.
 const _minApplyingDuration = Duration(milliseconds: 600);
@@ -55,9 +53,9 @@ class _ExtendViewState extends ConsumerState<ExtendView> {
   List<Object?>? _watchInputs() {
     final profileId = widget.profileId;
     final profile = ref.watch(
-      profileProvider(profileId).select(
-        (state) => (state?.extendType, state?.scriptId, state?.matchTarget),
-      ),
+      profileProvider(
+        profileId,
+      ).select((state) => (state?.scriptId, state?.exitTargets)),
     );
     final rules = ref.watch(profileRulesProvider(profileId)).value;
     final disabledRuleIds = ref
@@ -130,8 +128,8 @@ class _ExtendViewState extends ConsumerState<ExtendView> {
                 SliverToBoxAdapter(
                   child: SizedBox(height: context.sectionsTopPadding),
                 ),
-                const _ModeSection(),
-                const _Content(),
+                const ScriptContent(),
+                const AddedRulesContent(),
                 _MergeSection(profileId: widget.profileId),
                 SliverToBoxAdapter(
                   child: SizedBox(height: context.bottomInset),
@@ -148,67 +146,6 @@ class _ExtendViewState extends ConsumerState<ExtendView> {
   void dispose() {
     _setupAction.autoApplyProfile();
     super.dispose();
-  }
-}
-
-class _ModeSection extends ConsumerWidget {
-  const _ModeSection();
-
-  String _label(AppLocalizations l, ExtendType type) => switch (type) {
-    ExtendType.standard => l.standard,
-    ExtendType.script => l.script,
-  };
-
-  String _description(AppLocalizations l, ExtendType type) => switch (type) {
-    ExtendType.standard => l.standardModeDesc,
-    ExtendType.script => l.scriptModeDesc,
-  };
-
-  void _handleChangeType(WidgetRef ref, int profileId, ExtendType type) {
-    ref.read(profilesProvider.notifier).updateProfile(profileId, (state) {
-      return state.copyWith(extendType: type);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final appLocalizations = context.appLocalizations;
-    final profileId = ProfileIdProvider.of(context)!.profileId;
-    final extendType = ref.watch(extendTypeProvider(profileId));
-    return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      sliver: SliverToBoxAdapter(
-        child: generateSection(
-          title: appLocalizations.extendMode,
-          items: [
-            for (final type in ExtendType.values)
-              DecorationListItem(
-                isSelected: type == extendType,
-                title: Text(_label(appLocalizations, type)),
-                subtitle: Text(_description(appLocalizations, type)),
-                trailing: type == extendType
-                    ? const SelectionBadge(size: 24)
-                    : null,
-                onPressed: () => _handleChangeType(ref, profileId, type),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Content extends ConsumerWidget {
-  const _Content();
-
-  @override
-  Widget build(BuildContext context, ref) {
-    final profileId = ProfileIdProvider.of(context)!.profileId;
-    final extendType = ref.watch(extendTypeProvider(profileId));
-    return switch (extendType) {
-      ExtendType.standard => const StandardContent(),
-      ExtendType.script => const ScriptContent(),
-    };
   }
 }
 
@@ -230,55 +167,37 @@ class _MergeSection extends ConsumerWidget {
           builder: (context, snapshot) {
             final merges = (snapshot.data?[0] as List<MergeConfig>?) ?? [];
             final selectedIds = (snapshot.data?[1] as List<String>?) ?? [];
-            return SliverMainAxisGroup(
-              slivers: [
-                const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: ListHeader(title: '扩展配置'),
-                  ),
-                ),
-                if (merges.isNotEmpty) ...[
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: generateGroup([
-                        for (final merge in merges)
-                          _MergeOption(
-                            label: merge.label,
-                            isGlobal: merge.isGlobal,
-                            isSelected:
-                                merge.isGlobal ||
-                                selectedIds.contains(merge.id),
-                            onSelected: merge.isGlobal
-                                ? null
-                                : () async {
-                                    await mergeManager.toggleSelected(
-                                      profileId,
-                                      merge.id,
-                                    );
-                                    ref
-                                        .read(setupActionProvider.notifier)
-                                        .applyProfileDebounce(force: true);
-                                  },
-                          ),
-                      ]),
+            return SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverToBoxAdapter(
+                child: generateSection(
+                  title: '扩展配置',
+                  items: [
+                    for (final merge in merges)
+                      _MergeOption(
+                        label: merge.label,
+                        isGlobal: merge.isGlobal,
+                        isSelected:
+                            merge.isGlobal || selectedIds.contains(merge.id),
+                        onSelected: merge.isGlobal
+                            ? null
+                            : () async {
+                                await mergeManager.toggleSelected(
+                                  profileId,
+                                  merge.id,
+                                );
+                                ref
+                                    .read(setupActionProvider.notifier)
+                                    .applyProfileDebounce(force: true);
+                              },
+                      ),
+                    ListItem.open(
+                      title: const Text('前往配置扩展配置'),
+                      widget: const MergesView(),
                     ),
-                  ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                ],
-                SliverToBoxAdapter(
-                  child: MoreActionButton(
-                    label: '前往配置扩展配置',
-                    onPressed: () {
-                      showInSheet<void>(
-                        context,
-                        builder: (_) => const MergesView(),
-                      );
-                    },
-                  ),
+                  ],
                 ),
-              ],
+              ),
             );
           },
         );

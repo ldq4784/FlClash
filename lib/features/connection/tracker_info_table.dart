@@ -3,10 +3,8 @@ import 'dart:math';
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/models/models.dart';
-import 'package:fl_clash/providers/config.dart';
 import 'package:fl_clash/widgets/widgets.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'tracker_info_item.dart';
 
@@ -16,7 +14,6 @@ List<RecordColumn<TrackerInfo>> trackerInfoColumns(
   BuildContext context, {
   required double width,
   required bool isLive,
-  bool? isAndroid,
 }) {
   final appLocalizations = context.appLocalizations;
   final wide = width >= recordWideTableWidth;
@@ -34,7 +31,7 @@ List<RecordColumn<TrackerInfo>> trackerInfoColumns(
       ),
     RecordColumn(
       TableColumn('process', appLocalizations.process, width: wide ? 160 : 140),
-      cell: (_, info) => _ProcessCell(info, isAndroid: isAndroid),
+      cell: (_, info) => _ProcessCell(info),
       sortKey: (info) => info.progressText.toLowerCase(),
     ),
     RecordColumn(
@@ -186,30 +183,36 @@ class TrackerInfoTableRow extends StatelessWidget {
   }
 }
 
-class _ProcessCell extends ConsumerWidget {
+class _ProcessCell extends StatelessWidget {
   final TrackerInfo trackerInfo;
-  final bool? isAndroid;
 
-  const _ProcessCell(this.trackerInfo, {this.isAndroid});
+  const _ProcessCell(this.trackerInfo);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final text = RecordCellText(trackerInfo.progressText);
     final process = trackerInfo.metadata.process;
-    final showIcon = ref.watch(
-      patchClashConfigProvider.select(
-        (state) => showsTrackerPackageIcon(state, isAndroid: isAndroid),
-      ),
-    );
-    if (!showIcon || process.isEmpty) {
+    if (process.isEmpty) {
       return text;
     }
-    return Row(
-      spacing: 8,
-      children: [
-        TrackerAppIcon(packageName: process, size: 20),
-        Flexible(child: text),
-      ],
+    return OwnPackageIcon(
+      packageName: process,
+      size: 20,
+      builder: (context, icon) => icon == null
+          ? text
+          : Row(
+              spacing: 8,
+              children: [
+                GestureDetector(
+                  onTap: () => RecordFilterScope.add(
+                    context,
+                    RecordFilter(RecordFacetKind.app, process),
+                  ),
+                  child: icon,
+                ),
+                Flexible(child: text),
+              ],
+            ),
     );
   }
 }

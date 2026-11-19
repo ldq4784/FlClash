@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FLUTTER_VERSION: '3.47.6'
+  FLUTTER_VERSION: '3.50.0'
   GO_VERSION: '1.27.1'
   NDK_VERSION: r28c
 
@@ -103,13 +103,13 @@ jobs:
             name="${{ github.ref_name }}"
             ver="${tag#v}"
           else
-            tag="v0.9.3-build.${{ github.run_number }}"
-            name="Release v0.9.3-build.${{ github.run_number }}"
-            ver="0.9.3-build.${{ github.run_number }}"
+            tag="v0.9.4-build.${{ github.run_number }}"
+            name="Release v0.9.4-build.${{ github.run_number }}"
+            ver="0.9.4-build.${{ github.run_number }}"
           fi
           echo "tag=$tag" >> $GITHUB_OUTPUT
           echo "name=$name" >> $GITHUB_OUTPUT
-          code=$((2026102400 + ${{ github.run_number }}))
+          code=$((2026111900 + ${{ github.run_number }}))
           sed -i "s/^version: .*/version: ${ver}+${code}/" pubspec.yaml
           echo "Updated pubspec.yaml to: $(grep '^version:' pubspec.yaml)"
 
@@ -131,7 +131,7 @@ jobs:
       - name: Build Android arm64 APK
         env:
           ANDROID_NDK_HOME: ${{ steps.build-ndk.outputs.ndk-path }}
-        run: dart setup.dart android --arch arm64 --env stable -v
+        run: dart tool/package.dart android --arch arm64 --tag "${{ steps.release_info.outputs.tag }}" --env stable -v
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -184,13 +184,13 @@ jobs:
             name="${{ github.ref_name }}"
             ver="${tag#v}"
           else
-            tag="v0.9.3-build.${{ github.run_number }}"
-            name="Release v0.9.3-build.${{ github.run_number }}"
-            ver="0.9.3-build.${{ github.run_number }}"
+            tag="v0.9.4-build.${{ github.run_number }}"
+            name="Release v0.9.4-build.${{ github.run_number }}"
+            ver="0.9.4-build.${{ github.run_number }}"
           fi
           echo "tag=$tag" >> $GITHUB_OUTPUT
           echo "name=$name" >> $GITHUB_OUTPUT
-          code=$((2026102400 + ${{ github.run_number }}))
+          code=$((2026111900 + ${{ github.run_number }}))
           sed -i "s/^version: .*/version: ${ver}+${code}/" pubspec.yaml
           echo "Updated pubspec.yaml to: $(grep '^version:' pubspec.yaml)"
 
@@ -210,7 +210,7 @@ jobs:
           echo "$CA_BUNDLE_SHA256  $bundle" | sha256sum -c -
 
       - name: Build Windows amd64
-        run: dart setup.dart windows --env stable -v
+        run: dart tool/package.dart windows --tag "${{ steps.release_info.outputs.tag }}" --env stable -v
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -268,13 +268,13 @@ jobs:
             name="${{ github.ref_name }}"
             ver="${tag#v}"
           else
-            tag="v0.9.3-build.${{ github.run_number }}"
-            name="Release v0.9.3-build.${{ github.run_number }}"
-            ver="0.9.3-build.${{ github.run_number }}"
+            tag="v0.9.4-build.${{ github.run_number }}"
+            name="Release v0.9.4-build.${{ github.run_number }}"
+            ver="0.9.4-build.${{ github.run_number }}"
           fi
           echo "tag=$tag" >> $GITHUB_OUTPUT
           echo "name=$name" >> $GITHUB_OUTPUT
-          code=$((2026102400 + ${{ github.run_number }}))
+          code=$((2026111900 + ${{ github.run_number }}))
           sed -i.bak "s/^version: .*/version: ${ver}+${code}/" pubspec.yaml
           rm -f pubspec.yaml.bak
           echo "Updated pubspec.yaml to: $(grep '^version:' pubspec.yaml)"
@@ -295,7 +295,9 @@ jobs:
           echo "$CA_BUNDLE_SHA256  $bundle" | shasum -a 256 -c -
 
       - name: Build macOS arm64
-        run: dart setup.dart macos --env stable -v
+        env:
+          FLUTTER_MACOS_ARM64_ONLY: true
+        run: dart tool/package.dart macos --tag "${{ steps.release_info.outputs.tag }}" --env stable -v
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -319,8 +321,8 @@ jobs:
             tag="${{ github.ref_name }}"
             name="${{ github.ref_name }}"
           else
-            tag="v0.9.3-build.${{ github.run_number }}"
-            name="Release v0.9.3-build.${{ github.run_number }}"
+            tag="v0.9.4-build.${{ github.run_number }}"
+            name="Release v0.9.4-build.${{ github.run_number }}"
           fi
           echo "tag=$tag" >> $GITHUB_OUTPUT
           echo "name=$name" >> $GITHUB_OUTPUT
@@ -334,11 +336,22 @@ jobs:
 
       - name: Generate sha256
         shell: bash
+        env:
+          TAG: ${{ steps.release_info.outputs.tag }}
         run: |
           cd ./dist
-          rm -f SHA256SUMS
-          sha256sum * > SHA256SUMS
-          cat SHA256SUMS
+          rm -f SHA256SUMS *-SHA256SUMS manifest.json
+          ver="${TAG#v}"
+          ver="${ver//+/.}"
+          if [[ -f "FlClash-dev-${ver}-android-arm64.apk" ]]; then
+            cp "FlClash-dev-${ver}-android-arm64.apk" "FlClash-${ver}-android-arm64-v8a.apk"
+          fi
+          if [[ -f "FlClash-dev-${ver}-windows-amd64-setup.exe" ]]; then
+            cp "FlClash-dev-${ver}-windows-amd64-setup.exe" "FlClash-${ver}-windows-amd64-setup.exe"
+          fi
+          sha256sum * > "FlClash-dev-${ver}-SHA256SUMS"
+          cp "FlClash-dev-${ver}-SHA256SUMS" SHA256SUMS
+          cat "FlClash-dev-${ver}-SHA256SUMS"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -346,6 +359,6 @@ jobs:
           files: ./dist/*
           tag_name: ${{ steps.release_info.outputs.tag }}
           name: ${{ steps.release_info.outputs.name }}
+          generate_release_notes: true
           draft: false
           prerelease: false
-          generate_release_notes: true

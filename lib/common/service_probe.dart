@@ -8,6 +8,9 @@ import 'package:flutter/foundation.dart';
 const directOutbound = 'DIRECT';
 const routedOutbound = '';
 
+/// `probeErrorTimeout` in core/probe.go.
+const probeErrorTimeout = 'timeout';
+
 /// Built-in targets match checker names registered in core/service_check.go.
 @immutable
 sealed class ServiceTarget {

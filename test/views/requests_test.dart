@@ -1,13 +1,18 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/features/features.dart';
 import 'package:fl_clash/models/models.dart';
+import 'package:fl_clash/plugins/app.dart';
 import 'package:fl_clash/providers/providers.dart';
 import 'package:fl_clash/state.dart';
 import 'package:fl_clash/ui/icons/icons.dart';
 import 'package:fl_clash/views/connection/requests.dart';
 import 'package:fl_clash/widgets/widgets.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -77,7 +82,7 @@ void main() {
   Future<void> pumpRequests(
     WidgetTester tester, {
     Size size = _tableSize,
-    bool? isAndroid,
+    App? iconSource,
   }) async {
     container.read(viewSizeProvider.notifier).update((_) => size);
     tester.view.physicalSize = size;
@@ -88,10 +93,13 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: TestApp(
-          child: RequestsView(
-            initialFeed: RequestFeed.recent,
-            isAndroid: isAndroid,
+        child: ProviderScope(
+          overrides: [
+            if (iconSource != null)
+              packageIconSourceProvider.overrideWithValue(iconSource),
+          ],
+          child: const TestApp(
+            child: RequestsView(initialFeed: RequestFeed.recent),
           ),
         ),
       ),
@@ -534,61 +542,61 @@ void main() {
     await teardownView(tester);
   });
 
-  testWidgets('table process column shows app icons on Android only when '
-      'findProcessMode is always and filters when tapped', (tester) async {
-    container.listen(patchClashConfigProvider, (_, _) {});
-    container
-        .read(patchClashConfigProvider.notifier)
-        .update(
-          (state) => state.copyWith(findProcessMode: FindProcessMode.always),
-        );
-    seedRequests([
-      _tracker(id: 'a', host: 'alpha.test', process: 'com.example.alpha'),
-      _tracker(id: 'b', host: 'beta.test', process: ''),
-    ]);
+  testWidgets(
+    'table process column shows app icons when available and filters when tapped',
+    (tester) async {
+      const channel = MethodChannel('$packageName/app');
+      final icons = Directory.systemTemp.createTempSync('req_icons');
+      final png = base64Decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+      );
+      File('${icons.path}/com.example.alpha.png').writeAsBytesSync(png);
+      App().clearPackageIconCache();
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            final name = call.arguments['packageName'] as String;
+            return '${icons.path}/$name.png';
+          });
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null);
+        App().clearPackageIconCache();
+        icons.deleteSync(recursive: true);
+      });
 
-    await pumpRequests(tester, isAndroid: true);
+      seedRequests([
+        _tracker(id: 'a', host: 'alpha.test', process: 'com.example.alpha'),
+        _tracker(id: 'b', host: 'beta.test', process: ''),
+      ]);
 
-    expect(find.byType(PackageIcon), findsOneWidget);
-    expect(
-      tester.widget<PackageIcon>(find.byType(PackageIcon)).packageName,
-      'com.example.alpha',
-    );
-    expect(tester.takeException(), isNull);
+      await pumpRequests(tester, iconSource: App());
 
-    await tester.tap(find.byType(PackageIcon));
-    await tester.pumpAndSettle();
+      expect(find.byType(OwnPackageIcon), findsOneWidget);
+      expect(
+        tester.widget<OwnPackageIcon>(find.byType(OwnPackageIcon)).packageName,
+        'com.example.alpha',
+      );
+      expect(find.byType(Image), findsOneWidget);
+      expect(tester.takeException(), isNull);
 
-    expect(find.textContaining('alpha.test'), findsWidgets);
-    expect(find.textContaining('beta.test'), findsNothing);
+      await tester.tap(find.byType(Image));
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(Chip, 'com.example.alpha'));
-    await tester.pumpAndSettle();
-    expect(find.textContaining('beta.test'), findsWidgets);
+      expect(find.textContaining('alpha.test'), findsWidgets);
+      expect(find.textContaining('beta.test'), findsNothing);
 
-    container
-        .read(patchClashConfigProvider.notifier)
-        .update(
-          (state) => state.copyWith(findProcessMode: FindProcessMode.off),
-        );
-    await tester.pump();
-    expect(find.byType(PackageIcon), findsNothing);
+      await tester.tap(find.widgetWithText(Chip, 'com.example.alpha'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('beta.test'), findsWidgets);
 
-    container
-        .read(patchClashConfigProvider.notifier)
-        .update(
-          (state) => state.copyWith(findProcessMode: FindProcessMode.always),
-        );
-    await tester.pump();
-    expect(find.byType(PackageIcon), findsOneWidget);
+      await teardownView(tester);
 
-    await teardownView(tester);
+      await pumpRequests(tester);
+      expect(find.byType(Image), findsNothing);
 
-    await pumpRequests(tester, isAndroid: false);
-    expect(find.byType(PackageIcon), findsNothing);
-
-    await teardownView(tester);
-  });
+      await teardownView(tester);
+    },
+  );
 
   testWidgets('the table scrollbar leaves no room for the bar above it', (
     tester,
@@ -730,6 +738,47 @@ void main() {
 
     expect(find.textContaining('beta.test'), findsWidgets);
     expect(find.textContaining('alpha.test'), findsNothing);
+
+    await teardownView(tester);
+  });
+
+  testWidgets('grouping opens on the newest group and ungrouping returns to '
+      'the newest request', (tester) async {
+    seedRequests([
+      for (var i = 0; i < 60; i++)
+        _tracker(id: '$i', host: 'host$i.test', process: 'app$i'),
+    ]);
+    container.listen(appSettingProvider, (_, _) {});
+
+    await pumpRequests(tester, size: _listSize);
+    await tester.pumpAndSettle();
+    await openSubMenu(tester, 'Group by');
+    await tester.tap(inMenu(find.text('App')));
+    await tester.pumpAndSettle();
+
+    final grouped = tester.state<ScrollableState>(
+      find.descendant(
+        of: find.byType(CustomScrollView),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(grouped.position.maxScrollExtent, greaterThan(0));
+    expect(grouped.position.pixels, 0);
+    final top = find.byType(CollapsibleHeader).first;
+    expect(tester.widget<CollapsibleHeader>(top).label, 'app59');
+
+    await openSubMenu(tester, 'Group by');
+    await tester.tap(inMenu(find.text('None')));
+    await tester.pumpAndSettle();
+
+    final feed = tester.state<ScrollableState>(
+      find.descendant(
+        of: find.byType(ScrollToEndBox),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(feed.position.pixels, feed.position.maxScrollExtent);
+    expect(find.textContaining('host59.test'), findsWidgets);
 
     await teardownView(tester);
   });
