@@ -534,6 +534,8 @@ class _CountryBadgeState extends State<_CountryBadge>
     final enabled = !widget.checking;
     final size = widget.size;
     final code = widget.countryCode;
+    final flag = code?.countryFlagEmoji;
+    final isFlag = flag != null && flag != code;
     final tooltip = context.appLocalizations.retry;
     final color = Color.alphaBlend(
       foreground.withValues(alpha: enabled && _hovered ? 0.08 : 0),
@@ -566,6 +568,16 @@ class _CountryBadgeState extends State<_CountryBadge>
                       AppGlyphs.proxies,
                       size: size * 0.42,
                       color: foreground,
+                    )
+                  : isFlag
+                  ? Text(
+                      flag,
+                      maxLines: 1,
+                      style: AppTextStyle.custom(
+                        context,
+                        size: size * 0.48,
+                        leading: size * 0.48,
+                      ).copyWith(fontFamily: FontFamily.twEmoji.value),
                     )
                   : Text(
                       code.toUpperCase(),
