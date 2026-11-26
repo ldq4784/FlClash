@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FLUTTER_VERSION: '3.50.0'
+  FLUTTER_VERSION: '3.50.1'
   GO_VERSION: '1.27.1'
   NDK_VERSION: r28c
 
@@ -103,13 +103,13 @@ jobs:
             name="${{ github.ref_name }}"
             ver="${tag#v}"
           else
-            tag="v0.9.4-build.${{ github.run_number }}"
-            name="Release v0.9.4-build.${{ github.run_number }}"
-            ver="0.9.4-build.${{ github.run_number }}"
+            tag="v0.9.5-build.${{ github.run_number }}"
+            name="Release v0.9.5-build.${{ github.run_number }}"
+            ver="0.9.5-build.${{ github.run_number }}"
           fi
           echo "tag=$tag" >> $GITHUB_OUTPUT
           echo "name=$name" >> $GITHUB_OUTPUT
-          code=$((2026111900 + ${{ github.run_number }}))
+          code=$((2026112600 + ${{ github.run_number }}))
           sed -i "s/^version: .*/version: ${ver}+${code}/" pubspec.yaml
           echo "Updated pubspec.yaml to: $(grep '^version:' pubspec.yaml)"
 
@@ -118,6 +118,8 @@ jobs:
           flutter --version
           flutter pub get
 
+      # The core embeds this bundle and FlClashHttpOverrides.trustCoreRoots loads it for Dart.
+      # Pinned by hash, so a new bundle from https://curl.se/docs/caextract.html is a reviewed bump.
       - name: Fetch CA certificates
         shell: bash
         env:
@@ -184,13 +186,13 @@ jobs:
             name="${{ github.ref_name }}"
             ver="${tag#v}"
           else
-            tag="v0.9.4-build.${{ github.run_number }}"
-            name="Release v0.9.4-build.${{ github.run_number }}"
-            ver="0.9.4-build.${{ github.run_number }}"
+            tag="v0.9.5-build.${{ github.run_number }}"
+            name="Release v0.9.5-build.${{ github.run_number }}"
+            ver="0.9.5-build.${{ github.run_number }}"
           fi
           echo "tag=$tag" >> $GITHUB_OUTPUT
           echo "name=$name" >> $GITHUB_OUTPUT
-          code=$((2026111900 + ${{ github.run_number }}))
+          code=$((2026112600 + ${{ github.run_number }}))
           sed -i "s/^version: .*/version: ${ver}+${code}/" pubspec.yaml
           echo "Updated pubspec.yaml to: $(grep '^version:' pubspec.yaml)"
 
@@ -268,13 +270,13 @@ jobs:
             name="${{ github.ref_name }}"
             ver="${tag#v}"
           else
-            tag="v0.9.4-build.${{ github.run_number }}"
-            name="Release v0.9.4-build.${{ github.run_number }}"
-            ver="0.9.4-build.${{ github.run_number }}"
+            tag="v0.9.5-build.${{ github.run_number }}"
+            name="Release v0.9.5-build.${{ github.run_number }}"
+            ver="0.9.5-build.${{ github.run_number }}"
           fi
           echo "tag=$tag" >> $GITHUB_OUTPUT
           echo "name=$name" >> $GITHUB_OUTPUT
-          code=$((2026111900 + ${{ github.run_number }}))
+          code=$((2026112600 + ${{ github.run_number }}))
           sed -i.bak "s/^version: .*/version: ${ver}+${code}/" pubspec.yaml
           rm -f pubspec.yaml.bak
           echo "Updated pubspec.yaml to: $(grep '^version:' pubspec.yaml)"
@@ -325,8 +327,8 @@ jobs:
             tag="$GITHUB_REF_NAME"
             name="$GITHUB_REF_NAME"
           else
-            tag="v0.9.4-build.${GITHUB_RUN_NUMBER}"
-            name="Release v0.9.4-build.${GITHUB_RUN_NUMBER}"
+            tag="v0.9.5-build.${GITHUB_RUN_NUMBER}"
+            name="Release v0.9.5-build.${GITHUB_RUN_NUMBER}"
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "name=$name" >> "$GITHUB_OUTPUT"
@@ -390,15 +392,9 @@ jobs:
           rm -f SHA256SUMS *-SHA256SUMS manifest.json
           ver="${TAG#v}"
           ver="${ver//+/.}"
-          if [[ -f "FlClash-dev-${ver}-android-arm64.apk" ]]; then
-            cp "FlClash-dev-${ver}-android-arm64.apk" "FlClash-${ver}-android-arm64-v8a.apk"
-          fi
-          if [[ -f "FlClash-dev-${ver}-windows-amd64-setup.exe" ]]; then
-            cp "FlClash-dev-${ver}-windows-amd64-setup.exe" "FlClash-${ver}-windows-amd64-setup.exe"
-          fi
-          sha256sum * > "FlClash-dev-${ver}-SHA256SUMS"
-          cp "FlClash-dev-${ver}-SHA256SUMS" SHA256SUMS
-          cat "FlClash-dev-${ver}-SHA256SUMS"
+          sha256sum * > "FlClash-${ver}-SHA256SUMS"
+          cp "FlClash-${ver}-SHA256SUMS" SHA256SUMS
+          cat "FlClash-${ver}-SHA256SUMS"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2

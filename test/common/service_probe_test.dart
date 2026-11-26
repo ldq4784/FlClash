@@ -107,12 +107,13 @@ void main() {
   });
 
   group('ServiceCheck.of', () {
-    test('carries the region, node and check time across', () {
+    test('carries the region, address, node and check time across', () {
       final check = ServiceCheck.of(
         const ServiceCheckItem(
           name: 'netflix',
           status: 'originals-only',
           region: 'JP',
+          ip: '198.51.100.9',
           delay: 87,
           chains: ['JP-02', 'auto'],
           checkedAt: 1700000000000,
@@ -124,6 +125,7 @@ void main() {
 
       expect(check.status, ServiceProbeStatus.originalsOnly);
       expect(check.region, 'JP');
+      expect(check.ip, '198.51.100.9');
       expect(check.delay, 87);
       expect(check.node, 'JP-02');
       expect(check.chains, ['JP-02', 'auto']);
@@ -146,6 +148,7 @@ void main() {
       expect(check.status, ServiceProbeStatus.failed);
       expect(check.delay, isNull);
       expect(check.region, isNull);
+      expect(check.ip, isNull);
       expect(check.node, isNull);
       expect(check.checkedAt, isNull);
     });
