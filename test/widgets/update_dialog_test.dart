@@ -153,7 +153,7 @@ void main() {
         .checkUpdateResultHandle(data: release(_bulletsOnly));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('- Override scripts'), findsOneWidget);
+    expect(find.textContaining('• Override scripts'), findsOneWidget);
 
     await tapCancel(tester);
     await shown;
@@ -176,7 +176,7 @@ void main() {
 
     expect(find.textContaining('更新亮点'), findsOneWidget);
     expect(find.textContaining('本次更新支持 手动编写 更新说明，详见 发布页。'), findsOneWidget);
-    expect(find.textContaining('- 修复 Windows 图标问题'), findsOneWidget);
+    expect(find.textContaining('• 修复 Windows 图标问题'), findsOneWidget);
     expect(find.textContaining('Full Changelog'), findsNothing);
 
     await tapCancel(tester);

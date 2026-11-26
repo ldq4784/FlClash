@@ -157,7 +157,7 @@ class CommonAction extends _$CommonAction {
       if (block.hasGapBefore) {
         spans.add(TextSpan(text: '\n', style: subheadline));
       }
-      final prefix = block.kind == ReleaseNoteKind.bullet ? '- ' : '';
+      final prefix = block.kind == ReleaseNoteKind.bullet ? '• ' : '';
       spans.addAll([
         if (prefix.isNotEmpty) TextSpan(text: prefix, style: subheadline),
         ..._inlineMarkdownSpans(
